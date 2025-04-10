@@ -342,12 +342,15 @@ fi
 
 update_box_rule_geosite_usincn_block
 
-
-git add .
+print_message "current status: ..."
 git status
+git add .
 curr_time=$(date +"%Y%m%d_%H%M%S")
 git commit -m "updated on $curr_time" || true
+print_message "start push: ..."
 git push origin "main" || true
+print_message "current status: ..."
+git status
 
 rm -f "$global_temp_path/content_tmp1.txt"
 rm -f "$global_temp_path/content_tmp2.txt"
@@ -367,6 +370,7 @@ else
   (crontab -l 2>/dev/null; echo "0 12 * * * ${curr_script_path}/sync_rules.sh >> /root/sync_rules_cron.log 2>&1") | crontab -
   print_message "已添加定时任务：每天12点执行 ${curr_script_path}/sync_rules.sh"
 fi
+print_message "finish script: ------------------------------------------------------------------------"
 
 
 
