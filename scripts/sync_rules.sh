@@ -258,17 +258,18 @@ mkdir -p "$share_files_home_path"
 mkdir -p "$global_temp_path"
 touch "$global_temp_path/content_tmp1.txt"
 touch "$global_temp_path/content_tmp2.txt"
-cd "$share_files_home_path"
+
 if [ -d "$share_files_path" ]; then
+  cd "$share_files_path"
   git pull origin main
   exit_on_code_failure $? "git pull 项目失败"
 else
-  #git clone https://github.com/landergo123/share-files.git
-  #git clone -b "main" "https://github.com/landergo123/share-files.git" "$share_files_path"
+  cd "$share_files_home_path"
   git clone -b "main" "git@github.com:landergo123/share-files.git" "$share_files_path"
   exit_on_code_failure $? "git clone 项目失败"
+  cd "$share_files_path"
 fi
-cd "$share_files_path"
+print "当前工作目录：$(pwd)"
 
 
 file_url="https://raw.githubusercontent.com/Loyalsoldier/clash-rules/release/cncidr.txt"
