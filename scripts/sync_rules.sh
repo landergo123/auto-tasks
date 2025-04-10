@@ -325,7 +325,7 @@ if crontab -l | grep -q "sync_rules.sh"; then
 else
     # 添加每天12点执行的定时任务
 	chmod +x "$curr_script_path"/sync_rules.sh
-    (crontab -l 2>/dev/null; echo "0 12 * * * ${curr_script_path}/sync_rules.sh") | crontab -
+    (crontab -l 2>/dev/null; echo "0 12 * * * ${curr_script_path}/sync_rules.sh >> /root/sync_rules_cron.log 2>&1") | crontab -
     echo "已添加定时任务：每天12点执行 $SCRIPT_NAME"
 fi
 
