@@ -287,7 +287,7 @@ else
   exit_on_code_failure $? "git clone 项目失败"
   cd "$share_files_path"
 fi
-print "当前工作目录：$(pwd)"
+print_message "当前工作目录：$(pwd)"
 
 
 #file_url="https://raw.githubusercontent.com/Loyalsoldier/clash-rules/release/cncidr.txt"
@@ -358,12 +358,12 @@ rm -f "$global_temp_path/content_tmp2.txt"
 #systemctl restart cron
 # 检查crontab中是否已经存在该脚本的任务
 if crontab -l | grep -q "sync_rules.sh"; then
-    echo "定时任务已存在，无需添加"
+  print_message "定时任务已存在，无需添加"
 else
-    # 添加每天12点执行的定时任务
-	chmod +x "$curr_script_path"/sync_rules.sh
-    (crontab -l 2>/dev/null; echo "0 12 * * * ${curr_script_path}/sync_rules.sh >> /root/sync_rules_cron.log 2>&1") | crontab -
-    echo "已添加定时任务：每天12点执行 $SCRIPT_NAME"
+  # 添加每天12点执行的定时任务
+  chmod +x "$curr_script_path"/sync_rules.sh
+  (crontab -l 2>/dev/null; echo "0 12 * * * ${curr_script_path}/sync_rules.sh >> /root/sync_rules_cron.log 2>&1") | crontab -
+  print_message "已添加定时任务：每天12点执行 ${curr_script_path}/sync_rules.sh"
 fi
 
 
