@@ -482,6 +482,7 @@ show_help(){
           docker_uninstall
     4、安装 nginx：
           nginx_install 1.27.1
+          nginx_install 1.27.1 America/Los_Angeles
     5、安装 singbox：【以下方式：任选一种】
           singbox install
           singbox install /opt/softs
