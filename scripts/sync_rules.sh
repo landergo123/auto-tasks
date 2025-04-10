@@ -289,13 +289,13 @@ else
   print_message "geoip-cn-3rd 无更新"
 fi
 
-if git_changed "$share_files_path/clash/rules/geosite_cn_3rd.txt"; then
+if git_changed "$share_files_path/clash/rules/geosite-cn-3rd.txt"; then
   update_box_rule_geosite_cn_3rd
 else
   print_message "geosite_cn_3rd 无更新"
 fi
 
-if git_changed "$share_files_path/clash/rules/geosite_proxy_3rd.txt"; then
+if git_changed "$share_files_path/clash/rules/geosite-proxy-3rd.txt"; then
   update_box_rule_geosite_proxy_3rd
 else
   print_message "geosite_proxy_3rd 无更新"
