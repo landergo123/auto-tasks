@@ -1528,6 +1528,16 @@ option_for_install(){
   if [ "$global_reality_enabled" = "Y" -o "$global_hysteria2_enabled" = "Y" -o "$global_vmess_ws_enabled" = "Y" ]; then
     sing_box_install
     sudo systemctl restart sing-box
+
+    if command_exists crontab; then
+      if crontab -l | grep -q "sing-box.log"; then
+        print_message "定时任务【滚动日志】已存在，无需添加"
+      else
+        (crontab -l 2>/dev/null; echo "0 15 * * * cat /dev/null >${global_box_log_path}/sing-box.log") | crontab -
+        print_message "定时任务【滚动日志】已添加：每天15点执行 cat /dev/null >${global_box_log_path}/sing-box.log"
+      fi
+    fi
+
   else
     return 1
   fi
