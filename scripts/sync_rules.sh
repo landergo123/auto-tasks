@@ -263,6 +263,8 @@ EOF
 }
 
 # 主流程开始 ----------------------
+print_message "start script: ------------------------------------------------------------------------"
+date "+%Y-%m-%d %H:%M:%S %:z"
 curr_script_path=$(readlink -f "$0")
 curr_script_path=$(dirname "$curr_script_path")
 share_files_home_path="/opt/softs"
