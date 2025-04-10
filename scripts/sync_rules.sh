@@ -39,6 +39,24 @@ command_exists() {
   # return $?
 }
 
+download_and_cover() {
+  file_url="$1"
+  tmp_file="$2"
+  dest_file="$3"
+  curl -fL "$file_url" -o "$tmp_file"
+  code=$?
+  if [ $code -ne 0 ]; then
+    return $code
+  fi
+  if head -n 1 "$tmp_file" | grep -q "^payload:"; then
+    print_message "payload校验：通过，$file_url"
+    cat $tmp_file > $dest_file
+  else
+    print_message "payload校验：未通过，跳过"
+  fi
+  return $?
+}
+
 git_init(){
   #sudo apt-get install git
   #ssh-keygen -t ed25519 -C "your_email@example.com"
@@ -272,17 +290,35 @@ fi
 print "当前工作目录：$(pwd)"
 
 
+#file_url="https://raw.githubusercontent.com/Loyalsoldier/clash-rules/release/cncidr.txt"
+#curl -fL "$file_url" -o "$share_files_path/clash/rules/geoip-cn-3rd.txt"
+
+#file_url="https://raw.githubusercontent.com/Loyalsoldier/clash-rules/release/direct.txt"
+#curl -fL "$file_url" -o "$share_files_path/clash/rules/geoip-proxy-3rd.txt"
+
+#file_url="https://raw.githubusercontent.com/Loyalsoldier/clash-rules/release/direct.txt"
+#curl -fL "$file_url" -o "$share_files_path/clash/rules/geosite-cn-3rd.txt"
+
+#file_url="https://raw.githubusercontent.com/Loyalsoldier/clash-rules/release/proxy.txt"
+#curl -fL "$file_url" -o "$share_files_path/clash/rules/geosite-proxy-3rd.txt"
+
 file_url="https://raw.githubusercontent.com/Loyalsoldier/clash-rules/release/cncidr.txt"
-curl -fL "$file_url" -o "$share_files_path/clash/rules/geoip-cn-3rd.txt"
+temp_file="$global_temp_path/content_tmp1.txt"
+dest_file="$share_files_path/clash/rules/geoip-cn-3rd.txt"
+download_and_cover "$file_url" "$temp_file" "$dest_file"
 
 #file_url="https://raw.githubusercontent.com/Loyalsoldier/clash-rules/release/direct.txt"
 #curl -fL "$file_url" -o "$share_files_path/clash/rules/geoip-proxy-3rd.txt"
 
 file_url="https://raw.githubusercontent.com/Loyalsoldier/clash-rules/release/direct.txt"
-curl -fL "$file_url" -o "$share_files_path/clash/rules/geosite-cn-3rd.txt"
+temp_file="$global_temp_path/content_tmp1.txt"
+dest_file="$share_files_path/clash/rules/geosite-cn-3rd.txt"
+download_and_cover "$file_url" "$temp_file" "$dest_file"
 
 file_url="https://raw.githubusercontent.com/Loyalsoldier/clash-rules/release/proxy.txt"
-curl -fL "$file_url" -o "$share_files_path/clash/rules/geosite-proxy-3rd.txt"
+temp_file="$global_temp_path/content_tmp1.txt"
+dest_file="$share_files_path/clash/rules/geosite-proxy-3rd.txt"
+download_and_cover "$file_url" "$temp_file" "$dest_file"
 
 if git_changed "$share_files_path/clash/rules/geoip-cn-3rd.txt"; then
   update_box_rule_geoip_cn_3rd
