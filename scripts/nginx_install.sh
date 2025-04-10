@@ -55,7 +55,11 @@ nginx_image_pull() {
 nginx_container_create(){
   print_message "创建容器：docker run -d --name $global_nginx_container_name --restart unless-stopped --network host -v $global_nginx_home_path/html:/usr/share/nginx/html -v $global_nginx_home_path/conf:/etc/nginx $global_nginx_full_image"
   # -e TZ=Asia/Shanghai
-  docker run -d --name "$global_nginx_container_name" --restart unless-stopped --network host -v "$global_nginx_home_path"/html:/usr/share/nginx/html -v "$global_nginx_home_path"/conf:/etc/nginx "$global_nginx_full_image"
+  if [ -z "$global_nginx_time_zone" ]; then
+    docker run -d --name "$global_nginx_container_name" --restart unless-stopped --network host -v "$global_nginx_home_path"/html:/usr/share/nginx/html -v "$global_nginx_home_path"/conf:/etc/nginx "$global_nginx_full_image"
+  else
+    docker run -d --name "$global_nginx_container_name" --restart unless-stopped --network host -e TZ="$global_nginx_time_zone" -v "$global_nginx_home_path"/html:/usr/share/nginx/html -v "$global_nginx_home_path"/conf:/etc/nginx "$global_nginx_full_image"
+  fi
 }
 
 nginx_config_default() {
@@ -441,9 +445,10 @@ env_init() {
 
 
 # 主流程 ======= 开始 =======================
-# 参数解析：版本号、安装目录
+# 参数解析：版本号、安装目录、时区
 global_nginx_version="$1"
 global_nginx_home_path="$2"
+global_nginx_time_zone="$3"
 global_nginx_container_name="nginx-web"
 if [ "$global_nginx_version" = "" ]; then
   global_nginx_version="1.27.1"
