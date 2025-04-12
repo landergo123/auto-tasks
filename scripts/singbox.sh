@@ -872,9 +872,9 @@ sing_box_config_show_box() {
 			"type": "urltest",
 			"interrupt_exist_connections": true,
 			"outbounds": [
-				"reality-out",
 				"hysteria2-out",
-				"vmess-ws-out"
+				"vmess-ws-out",
+				"reality-out"
 			]
 		},{
 			"tag": "proxy-out",
@@ -882,9 +882,9 @@ sing_box_config_show_box() {
 			"interrupt_exist_connections": true,
 			"outbounds": [
 				"urltest-out",
-				"reality-out",
 				"hysteria2-out",
-				"vmess-ws-out"
+				"vmess-ws-out",
+				"reality-out"
 			],
 			"default": "urltest-out"
 		},{
@@ -966,6 +966,7 @@ sing_box_config_show_box() {
 				"outbound": "direct-out"
 			},{
 				"domain_suffix": [
+					"githubusercontent.com",
 					"others.urls"
 				],
 				"ip_cidr": [
@@ -1290,22 +1291,23 @@ proxy-groups:
     type: select
     proxies:
       - 自动选择
-      - Reality
       - Hysteria2
       - Vmess
+      - Reality
 
   - name: 自动选择
     type: url-test #选出延迟最低的机场节点
     proxies:
-      - Reality
       - Hysteria2
       - Vmess
+      - Reality
     url: "http://www.gstatic.com/generate_204"
     interval: 300
     tolerance: 50
 
 rules:
   - IP-CIDR,${ip}/32,DIRECT
+  - DOMAIN-SUFFIX,githubusercontent.com,节点选择
 
   - RULE-SET,geoip-block,REJECT
   - RULE-SET,geosite-block,REJECT
