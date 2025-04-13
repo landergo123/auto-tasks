@@ -967,6 +967,7 @@ sing_box_config_show_box() {
 			},{
 				"domain_suffix": [
 					"githubusercontent.com",
+					"gstatic.com",
 					"others.urls"
 				],
 				"ip_cidr": [
@@ -1308,6 +1309,7 @@ proxy-groups:
 rules:
   - IP-CIDR,${ip}/32,DIRECT
   - DOMAIN-SUFFIX,githubusercontent.com,节点选择
+  - DOMAIN-SUFFIX,gstatic.com,节点选择
 
   - RULE-SET,geoip-block,REJECT
   - RULE-SET,geosite-block,REJECT
