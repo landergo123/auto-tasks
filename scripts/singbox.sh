@@ -966,12 +966,21 @@ sing_box_config_show_box() {
 				"outbound": "direct-out"
 			},{
 				"domain_suffix": [
+					"github.com",
 					"githubusercontent.com",
 					"gstatic.com",
+					"sagernet.org",
 					"others.urls"
 				],
 				"ip_cidr": [
 					"5.6.7.8/32"
+				],
+				"outbound": "proxy-out"
+			},{
+				"process_name": [
+					"GoLogin.exe",
+					"gologin.exe",
+					"Telegram.exe"
 				],
 				"outbound": "proxy-out"
 			},{
@@ -1308,8 +1317,18 @@ proxy-groups:
 
 rules:
   - IP-CIDR,${ip}/32,DIRECT
+  - DOMAIN-SUFFIX,github.com,节点选择
   - DOMAIN-SUFFIX,githubusercontent.com,节点选择
   - DOMAIN-SUFFIX,gstatic.com,节点选择
+  - DOMAIN-SUFFIX,sagernet.org,节点选择
+
+  - PROCESS-NAME,Telegram.exe,节点选择
+  #- PROCESS-NAME,msedge.exe,DIRECT
+  #- PROCESS-NAME,chrome.exe,DIRECT
+  - PROCESS-NAME,GoLogin.exe,节点选择
+  - PROCESS-NAME,gologin.exe,节点选择
+  - DOMAIN-SUFFIX,myip.link,节点选择
+  - DOMAIN-SUFFIX,gologin.com,节点选择
 
   - RULE-SET,geoip-block,REJECT
   - RULE-SET,geosite-block,REJECT
@@ -1687,4 +1706,5 @@ case "$option" in
 esac
 
 exit $?
+
 
