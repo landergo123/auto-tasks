@@ -970,6 +970,8 @@ sing_box_config_show_box() {
 					"githubusercontent.com",
 					"gstatic.com",
 					"sagernet.org",
+					"myip.link",
+					"gologin.com",
 					"others.urls"
 				],
 				"ip_cidr": [
