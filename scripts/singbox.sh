@@ -1559,7 +1559,8 @@ option_for_install(){
         print_message "定时任务【滚动日志】已存在，无需添加"
       else
         (crontab -l 2>/dev/null; echo "0 15 * * * cat /dev/null >${global_box_log_path}/sing-box.log") | crontab -
-        print_message "定时任务【滚动日志】已添加：每天15点执行 cat /dev/null >${global_box_log_path}/sing-box.log"
+        systemctl restart cron
+		print_message "定时任务【滚动日志】已添加：每天15点执行 cat /dev/null >${global_box_log_path}/sing-box.log"
       fi
     fi
 
@@ -1708,5 +1709,6 @@ case "$option" in
 esac
 
 exit $?
+
 
 
