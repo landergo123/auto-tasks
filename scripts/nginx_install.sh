@@ -446,19 +446,27 @@ env_init() {
 
 # 主流程 ======= 开始 =======================
 # 参数解析：版本号、安装目录、时区
+# ./nginx_install.sh 1.28-alpine /opt/softs nginx-quic America/Los_Angeles
+# ./nginx_install.sh 1.27.1 /opt/softs nginx-web America/Los_Angeles
 global_nginx_version="$1"
 global_nginx_home_path="$2"
-global_nginx_time_zone="$3"
-global_nginx_container_name="nginx-web"
+global_nginx_container_name="$3"
+global_nginx_time_zone="$4"
+
 if [ "$global_nginx_version" = "" ]; then
   global_nginx_version="1.27.1"
 fi
+
+if [ "$global_nginx_container_name" = "" ]; then
+  global_nginx_container_name="nginx-web"
+fi
+
 global_nginx_full_image="nginx:${global_nginx_version}"
 if [ "$global_nginx_home_path" = "" ]; then
   global_nginx_home_path="/opt/softs"
 fi
 global_nginx_home_path=$(readlink -f "$global_nginx_home_path")
-global_nginx_home_path="${global_nginx_home_path}/nginx-web"
+global_nginx_home_path="${global_nginx_home_path}/$global_nginx_container_name"
 
 # 确保 docker 已安装
 if ! command_exists docker; then
@@ -481,12 +489,12 @@ fi
 if docker inspect "$global_nginx_container_name" > /dev/null 2>&1; then
   # 检查容器运行状态
   container_status=$(docker inspect -f '{{.State.Running}}' "$global_nginx_container_name")
-  print_message "nginx-web 容器：running=${container_status}"
+  print_message "nginx 容器：running=${container_status}"
   if [ ! "$container_status" = "true" ]; then
     docker start "$global_nginx_container_name"
   fi
   container_status=$(docker inspect -f '{{.State.Running}}' "$global_nginx_container_name")
-  print_message "nginx-web 容器：running=${container_status}"
+  print_message "nginx 容器：running=${container_status}"
   exit 0
 fi
 
