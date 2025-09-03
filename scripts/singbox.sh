@@ -426,7 +426,9 @@ ${inbounds_str}{
 			"type": "vless",
 			"listen": "::",
 			"listen_port": ${global_reality_port},
-			"domain_strategy": "prefer_ipv4",
+                        "sniff": true,
+                        "sniff_timeout": "1s",
+			"domain_strategy": "ipv4_only",
 			"users": [{
 				"uuid": "${global_reality_auth_password}",
 				"flow": "xtls-rprx-vision"
@@ -461,7 +463,9 @@ ${inbounds_str}{
 			"type": "hysteria2",
 			"listen": "::",
 			"listen_port": ${global_hysteria2_port},
-			"domain_strategy": "prefer_ipv4",
+                        "sniff": true,
+                        "sniff_timeout": "1s",
+			"domain_strategy": "ipv4_only",
 			"obfs": {
 				"type": "salamander",
 				"password": "${global_hysteria2_obfs_password}"
@@ -493,7 +497,9 @@ ${inbounds_str}{
 			"type": "vmess",
 			"listen": "::",
 			"listen_port": ${global_vmess_ws_port},
-			"domain_strategy": "prefer_ipv4",
+                        "sniff": true,
+                        "sniff_timeout": "1s",
+			"domain_strategy": "ipv4_only",
 			"users": [{
 				"uuid": "${global_vmess_ws_auth_password}",
 				"alterId": 0
@@ -519,7 +525,7 @@ EOF
 		"timestamp": true
 	},
 	"dns": {
-		"strategy": "prefer_ipv4",
+		"strategy": "ipv4_only",
 		"final": "us-dns",
 		"servers": [
 			{
@@ -566,8 +572,33 @@ EOF
 		"final": "us-out",
 		"rules": [
 			{
-				"protocol": "dns",
-				"outbound": "dns-out"
+                                "type": "logical",
+                                "mode": "or",
+                                "rules": [
+                                        {
+                                                "protocol": "dns"
+                                        },{
+                                                "port": 53
+                                        }
+                                ],
+                                "outbound": "dns-out"
+                        },{
+                                "ip_version": 6,
+                                "outbound": "block-out"
+                        },{
+                                "type": "logical",
+                                "mode": "or",
+                                "rules": [
+                                        {
+                                                "port": 853
+                                        },{
+                                                "network": "udp",
+                                                "port": 443
+                                        },{
+                                                "protocol": "stun"
+                                        }
+                                ],
+                                "outbound": "block-out"
 			},{
 				"rule_set": [
 					"geoip-block"
@@ -607,7 +638,10 @@ EOF
 					"geosite-cn-custom"
 				],
 				"outbound": "cn-out"
-			}
+			},{
+                                "source_port_range": ["0:65535"],
+                                "server": "block-out"
+                        }
 		],
 		"rule_set": [
 			{
