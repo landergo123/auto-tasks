@@ -44,7 +44,8 @@ global_code_no_access=41
 global_code_not_found=44
 
 readonly DEFAULT_CF_ENABLED="N"
-readonly DEFAULT_BOX_VERSION="1.10.7"
+#readonly DEFAULT_BOX_VERSION="1.10.7"
+readonly DEFAULT_BOX_VERSION="1.12.16"
 readonly DEFAULT_REALITY_ENABLED="Y"
 readonly DEFAULT_REALITY_PORT=5443
 readonly DEFAULT_REALITY_SNI="itunes.apple.com"
@@ -379,14 +380,14 @@ sing_box_config_load() {
   while [ $i -lt $inbounds_count ]; do
   #for ((i=0; i<inbounds_count; i++)); do
     tag=$(jq -r ".inbounds[${i}].tag" "${global_box_home_path}"/config.json)
-    if [ "$tag" = "reality-in" ]; then
+    if [ "$tag" = "in-reality" ]; then
       global_reality_port=$(jq -r ".inbounds[${i}].listen_port" "${global_box_home_path}"/config.json)
       global_reality_tls_sni=$(jq -r ".inbounds[${i}].tls.server_name" "${global_box_home_path}"/config.json)
       global_reality_tls_public_key=$(base64 --decode "${global_box_home_path}"/reality.public.key.base64)
       global_reality_auth_password=$(jq -r ".inbounds[${i}].users[0].uuid" "${global_box_home_path}"/config.json)
       global_reality_tls_random=$(jq -r ".inbounds[${i}].tls.reality.short_id[0]" "${global_box_home_path}"/config.json)
 
-    elif [ "$tag" = "hysteria2-in" ]; then
+    elif [ "$tag" = "in-hysteria2" ]; then
       global_hysteria2_port=$(jq -r ".inbounds[${i}].listen_port" "${global_box_home_path}"/config.json)
       global_hysteria2_tls_sni=$(openssl x509 -in "${global_box_home_path}"/hysteria2.public.key -noout -subject -nameopt RFC2253 | awk -F'=' '{print $NF}')
       global_hysteria2_auth_password=$(jq -r ".inbounds[${i}].users[0].password" "${global_box_home_path}"/config.json)
@@ -398,7 +399,7 @@ sing_box_config_load() {
       global_hysteria2_tls_public_key_path="${global_box_home_path}/hysteria2.public.key"
       global_hysteria2_tls_private_key_path="${global_box_home_path}/hysteria2.private.key"
 
-    elif [ "$tag" = "vmess-ws-in" ]; then
+    elif [ "$tag" = "in-vmess-ws" ]; then
       global_vmess_ws_port=$(jq -r ".inbounds[${i}].listen_port" "${global_box_home_path}"/config.json)
       global_vmess_ws_auth_password=$(jq -r ".inbounds[${i}].users[0].uuid" "${global_box_home_path}"/config.json)
       global_vmess_ws_path=$(jq -r ".inbounds[${i}].transport.path" "${global_box_home_path}"/config.json)
@@ -422,7 +423,7 @@ sing_box_config_save() {
   if [ "$global_reality_enabled" = "Y" ]; then
     inbounds_str=$(cat <<EOF
 ${inbounds_str}{
-			"tag": "reality-in",
+			"tag": "in-reality",
 			"type": "vless",
 			"listen": "::",
 			"listen_port": ${global_reality_port},
@@ -459,7 +460,7 @@ EOF
     fi
     inbounds_str=$(cat <<EOF
 ${inbounds_str}{
-			"tag": "hysteria2-in",
+			"tag": "in-hysteria2",
 			"type": "hysteria2",
 			"listen": "::",
 			"listen_port": ${global_hysteria2_port},
@@ -493,7 +494,7 @@ EOF
     fi
     inbounds_str=$(cat <<EOF
 ${inbounds_str}{
-			"tag": "vmess-ws-in",
+			"tag": "in-vmess-ws",
 			"type": "vmess",
 			"listen": "::",
 			"listen_port": ${global_vmess_ws_port},
