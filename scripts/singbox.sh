@@ -518,217 +518,389 @@ EOF
   # todo 服务端最安全的做法：将阻断设置为默认出站路由，仅仅允许明确指定的代理通过，其他拒绝
   cat << EOF > "${global_box_home_path}"/config.json
 {
-	"log": {
-		"disabled": false,
-		"level": "info",
-		"output": "${global_box_log_file}",
-		"timestamp": true
-	},
-	"dns": {
-		"strategy": "ipv4_only",
-		"final": "us-dns",
-		"servers": [
-			{
-				"tag": "us-dns",
-				"address": "https://cloudflare-dns.com/dns-query",
-				"address_resolver": "default-dns",
-				"detour": "us-out"
-			},{
-				"tag": "default-dns",
-				"address": "https://1.1.1.1/dns-query",
-				"detour": "us-out"
-			},{
-				"tag": "block-dns",
-				"address": "rcode://refused"
-			}
-		],
-		"rules": [
-			{
-				"outbound": "any",
-				"server": "default-dns"
-			}
-		]
-	},
-	"inbounds": [
-		${inbounds_str}
-	],
-	"outbounds": [
-		{
-			"tag": "dns-out",
-			"type": "dns"
-		}, {
-			"tag": "us-out",
-			"type": "direct"
-		}, {
-			"tag": "cn-out",
-			"type": "block"
-		}, {
-			"tag": "block-out",
-			"type": "block"
-		}
-	],
-	"route": {
-		"auto_detect_interface": true,
-		"final": "us-out",
-		"rules": [
-			{
-                                "type": "logical",
-                                "mode": "or",
-                                "rules": [
-                                        {
-                                                "protocol": "dns"
-                                        },{
-                                                "port": 53
-                                        }
-                                ],
-                                "outbound": "dns-out"
-                        },{
-                                "ip_version": 6,
-                                "outbound": "block-out"
-                        },{
-                                "type": "logical",
-                                "mode": "or",
-                                "rules": [
-                                        {
-                                                "port": 853
-                                        },{
-                                                "network": "udp",
-                                                "port": 443
-                                        },{
-                                                "protocol": "stun"
-                                        }
-                                ],
-                                "outbound": "block-out"
-			},{
-				"rule_set": [
-					"geoip-block"
-				],
-				"outbound": "block-out"
-			},{
-				"rule_set": [
-					"geosite-block"
-				],
-				"outbound": "block-out"
-			},{
-				"rule_set": [
-					"geoip-proxy-3rd",
-					"geoip-proxy-custom"
-				],
-				"outbound": "us-out"
-			},{
-				"rule_set": [
-					"geosite-proxy-3rd",
-					"geosite-proxy-custom"
-				],
-				"outbound": "us-out"
-			},{
-				"rule_set": [
-					"geosite-usincn-block"
-				],
-				"outbound": "block-out"
-			},{
-				"rule_set": [
-					"geoip-cn-3rd",
-					"geoip-cn-custom"
-				],
-				"outbound": "cn-out"
-			},{
-				"rule_set": [
-					"geosite-cn-3rd",
-					"geosite-cn-custom"
-				],
-				"outbound": "cn-out"
-			},{
-                                "source_port_range": ["0:65535"],
-                                "server": "block-out"
-                        }
-		],
-		"rule_set": [
-			{
-				"tag": "geoip-block",
-				"type": "remote",
-				"format": "source",
-				"url": "https://raw.githubusercontent.com/landergo123/share-files/master/sbox/rules/geoip-block.json",
-				"update_interval": "1d",
-				"download_detour": "us-out"
-			},{
-				"tag": "geoip-cn-3rd",
-				"type": "remote",
-				"format": "source",
-				"url": "https://raw.githubusercontent.com/landergo123/share-files/master/sbox/rules/geoip-cn-3rd.json",
-				"update_interval": "1d",
-				"download_detour": "us-out"
-			},{
-				"tag": "geoip-cn-custom",
-				"type": "remote",
-				"format": "source",
-				"url": "https://raw.githubusercontent.com/landergo123/share-files/master/sbox/rules/geoip-cn-custom.json",
-				"update_interval": "1d",
-				"download_detour": "us-out"
-			},{
-				"tag": "geoip-proxy-3rd",
-				"type": "remote",
-				"format": "source",
-				"url": "https://raw.githubusercontent.com/landergo123/share-files/master/sbox/rules/geoip-proxy-3rd.json",
-				"update_interval": "1d",
-				"download_detour": "us-out"
-			},{
-				"tag": "geoip-proxy-custom",
-				"type": "remote",
-				"format": "source",
-				"url": "https://raw.githubusercontent.com/landergo123/share-files/master/sbox/rules/geoip-proxy-custom.json",
-				"update_interval": "1d",
-				"download_detour": "us-out"
-			},{
-				"tag": "geosite-block",
-				"type": "remote",
-				"format": "source",
-				"url": "https://raw.githubusercontent.com/landergo123/share-files/master/sbox/rules/geosite-block.json",
-				"update_interval": "1d",
-				"download_detour": "us-out"
-			},{
-				"tag": "geosite-cn-3rd",
-				"type": "remote",
-				"format": "source",
-				"url": "https://raw.githubusercontent.com/landergo123/share-files/master/sbox/rules/geosite-cn-3rd.json",
-				"update_interval": "1d",
-				"download_detour": "us-out"
-			},{
-				"tag": "geosite-cn-custom",
-				"type": "remote",
-				"format": "source",
-				"url": "https://raw.githubusercontent.com/landergo123/share-files/master/sbox/rules/geosite-cn-custom.json",
-				"update_interval": "1d",
-				"download_detour": "us-out"
-			},{
-				"tag": "geosite-proxy-3rd",
-				"type": "remote",
-				"format": "source",
-				"url": "https://raw.githubusercontent.com/landergo123/share-files/master/sbox/rules/geosite-proxy-3rd.json",
-				"update_interval": "1d",
-				"download_detour": "us-out"
-			},{
-				"tag": "geosite-proxy-custom",
-				"type": "remote",
-				"format": "source",
-				"url": "https://raw.githubusercontent.com/landergo123/share-files/master/sbox/rules/geosite-proxy-custom.json",
-				"update_interval": "1d",
-				"download_detour": "us-out"
-			},{
-				"tag": "geosite-usincn-block",
-				"type": "remote",
-				"format": "source",
-				"url": "https://raw.githubusercontent.com/landergo123/share-files/master/sbox/rules/geosite-usincn-block.json",
-				"update_interval": "1d",
-				"download_detour": "us-out"
-			}
-		]
-	},
-	"experimental": {
-		"cache_file": {
-			"enabled": true
-		}
-	}
+    "log": {
+        "disabled": false,
+        "level": "info",
+        "output": "${global_box_log_file}",
+        "timestamp": true
+    },
+    "inbounds": [
+        ${inbounds_str}
+    ],
+    "outbounds": [
+        {
+            "tag": "out-reject",
+            "type": "block"
+        },{
+            "tag": "out-cn",
+            "type": "block"
+        },{
+            "tag": "out-direct",
+            "type": "direct"
+        },{
+            "tag": "out-proxy",
+            "type": "direct"
+        }
+    ],
+    "dns": {
+        "final": "dns-reject",
+        "strategy": "ipv4_only",
+        "disable_cache": false,
+        "independent_cache": false,
+        "reverse_mapping": true,
+        "cache_capacity": 81920,
+        "servers": [
+            {
+                "tag": "dns-proxy",
+                "type": "https",
+                "server": "1.1.1.1"
+            },{
+                "tag": "dns-cn",
+                "type": "tcp",
+                "server": "127.0.0.1",
+                "server_port": 32153,
+                "connect_timeout": "10ms"
+            },{
+                "tag": "dns-reject",
+                "type": "tcp",
+                "server": "127.0.0.1",
+                "server_port": 32153,
+                "connect_timeout": "10ms"
+            },{
+                "tag": "dns-local",
+                "type": "https",
+                "server": "1.1.1.1"
+            }
+        ],
+        "rules": [
+            {
+                "rule_set": ["dns-site"],
+                "action": "predefined",
+                "rcode": "NOERROR"
+            },{
+                "rule_set": [
+                    "ipapis-site",
+                    "monitor-site",
+                    "google-site",
+                    "microsoft-site",
+                    "apple-site",
+                    "telegram-site",
+                    "ai-site",
+                    "openai-site",
+                    "bitcoin-site",
+                    "meta-site",
+                    "twitter-site",
+                    "netflix-site",
+                    "spotify-site",
+                    "amazon-site",
+                    "tiktok-site",
+                    "cloudflare-site",
+                    "proxy-custom-site"
+                ],
+                "server": "dns-proxy"
+            },{
+                "rule_set": ["proxy-3rd-site"],
+                "server": "dns-proxy"
+            },{
+                "rule_set": ["cn-custom-site", "cn-3rd-site"],
+                "server": "dns-cn"
+            },{
+                "source_port_range": ["0:65535"],
+                "server": "dns-proxy"
+            }
+        ]
+    },
+    "route": {
+        "final": "out-reject",
+        "auto_detect_interface": true,
+        "default_domain_resolver": "dns-local",
+        "rules": [
+            {
+                "ip_version": 6,
+                "outbound": "out-reject"
+            },{
+                "action": "sniff",
+                "sniffer": ["dns", "stun", "bittorrent", "dtls"],
+                "timeout": "500ms"
+            },{
+                "type": "logical",
+                "mode": "or",
+                "rules": [{"protocol": "dns"}, {"port": 53}],
+                "action": "hijack-dns"
+            },{
+                "ip_is_private": true,
+                "outbound": "out-reject"
+            },{
+                "type": "logical",
+                "mode": "or",
+                "rules": [{"port": 853},{"protocol": ["stun", "dtls", "bittorrent"]},{"rule_set": ["dns-site", "dns-ip"]}],
+                "outbound": "out-reject"
+            },{
+                "rule_set": [
+                    "ipapis-site",
+                    "monitor-site",
+                    "google-site",
+                    "microsoft-site",
+                    "apple-site",
+                    "telegram-site",
+                    "ai-site",
+                    "openai-site",
+                    "bitcoin-site",
+                    "meta-site",
+                    "twitter-site",
+                    "netflix-site",
+                    "spotify-site",
+                    "amazon-site",
+                    "tiktok-site",
+                    "cloudflare-site",
+                    "proxy-custom-site"
+                ],
+                "outbound": "out-proxy"
+            },{
+                "rule_set": [
+                    "google-ip",
+                    "microsoft-ip",
+                    "apple-ip",
+                    "telegram-ip",
+                    "ai-ip",
+                    "proxy-custom-ip"
+                ],
+                "outbound": "out-proxy"
+            },{
+                "rule_set": ["proxy-3rd-site", "proxy-3rd-ip"],
+                "outbound": "out-proxy"
+            },{
+                "rule_set": ["cn-custom-site", "cn-3rd-site"],
+                "outbound": "out-cn"
+            },{
+                "rule_set": ["cn-custom-ip", "cn-3rd-ip"],
+                "outbound": "out-cn"
+            },{
+                "source_port_range": ["0:65535"],
+                "outbound": "out-proxy"
+            }
+        ],
+        "rule_set": [
+            {
+                "tag": "dns-site",
+                "type": "remote",
+                "format": "source",
+                "url": "https://raw.githubusercontent.com/landergo123/share-files/master/rules/dns-site-box.json",
+                "update_interval": "1d",
+                "download_detour": "out-proxy"
+            },{
+                "tag": "dns-ip",
+                "type": "remote",
+                "format": "source",
+                "url": "https://raw.githubusercontent.com/landergo123/share-files/master/rules/dns-ip-box.json",
+                "update_interval": "1d",
+                "download_detour": "out-proxy"
+            },{
+                "tag": "google-site",
+                "type": "remote",
+                "format": "source",
+                "url": "https://raw.githubusercontent.com/landergo123/share-files/master/rules/google-site-box.json",
+                "update_interval": "1d",
+                "download_detour": "out-proxy"
+            },{
+                "tag": "google-ip",
+                "type": "remote",
+                "format": "source",
+                "url": "https://raw.githubusercontent.com/landergo123/share-files/master/rules/google-ip-box.json",
+                "update_interval": "1d",
+                "download_detour": "out-proxy"
+            },{
+                "tag": "microsoft-site",
+                "type": "remote",
+                "format": "source",
+                "url": "https://raw.githubusercontent.com/landergo123/share-files/master/rules/microsoft-site-box.json",
+                "update_interval": "1d",
+                "download_detour": "out-proxy"
+            },{
+                "tag": "microsoft-ip",
+                "type": "remote",
+                "format": "source",
+                "url": "https://raw.githubusercontent.com/landergo123/share-files/master/rules/microsoft-ip-box.json",
+                "update_interval": "1d",
+                "download_detour": "out-proxy"
+            },{
+                "tag": "apple-site",
+                "type": "remote",
+                "format": "source",
+                "url": "https://raw.githubusercontent.com/landergo123/share-files/master/rules/apple-site-box.json",
+                "update_interval": "1d",
+                "download_detour": "out-proxy"
+            },{
+                "tag": "apple-ip",
+                "type": "remote",
+                "format": "source",
+                "url": "https://raw.githubusercontent.com/landergo123/share-files/master/rules/apple-ip-box.json",
+                "update_interval": "1d",
+                "download_detour": "out-proxy"
+            },{
+                "tag": "telegram-site",
+                "type": "remote",
+                "format": "source",
+                "url": "https://raw.githubusercontent.com/landergo123/share-files/master/rules/telegram-site-box.json",
+                "update_interval": "1d",
+                "download_detour": "out-proxy"
+            },{
+                "tag": "telegram-ip",
+                "type": "remote",
+                "format": "source",
+                "url": "https://raw.githubusercontent.com/landergo123/share-files/master/rules/telegram-ip-box.json",
+                "update_interval": "1d",
+                "download_detour": "out-proxy"
+            },{
+                "tag": "ai-site",
+                "type": "remote",
+                "format": "source",
+                "url": "https://raw.githubusercontent.com/landergo123/share-files/master/rules/aitool-site-box.json",
+                "update_interval": "1d",
+                "download_detour": "out-proxy"
+            },{
+                "tag": "ai-ip",
+                "type": "remote",
+                "format": "source",
+                "url": "https://raw.githubusercontent.com/landergo123/share-files/master/rules/aitool-ip-box.json",
+                "update_interval": "1d",
+                "download_detour": "out-proxy"
+            },{
+                "tag": "openai-site",
+                "type": "remote",
+                "format": "source",
+                "url": "https://raw.githubusercontent.com/landergo123/share-files/master/rules/openai-site-box.json",
+                "update_interval": "1d",
+                "download_detour": "out-proxy"
+            },{
+                "tag": "bitcoin-site",
+                "type": "remote",
+                "format": "source",
+                "url": "https://raw.githubusercontent.com/landergo123/share-files/master/rules/bitcoin-site-box.json",
+                "update_interval": "1d",
+                "download_detour": "out-proxy"
+            },{
+                "tag": "meta-site",
+                "type": "remote",
+                "format": "source",
+                "url": "https://raw.githubusercontent.com/landergo123/share-files/master/rules/meta-site-box.json",
+                "update_interval": "1d",
+                "download_detour": "out-proxy"
+            },{
+                "tag": "twitter-site",
+                "type": "remote",
+                "format": "source",
+                "url": "https://raw.githubusercontent.com/landergo123/share-files/master/rules/twitter-site-box.json",
+                "update_interval": "1d",
+                "download_detour": "out-proxy"
+            },{
+                "tag": "netflix-site",
+                "type": "remote",
+                "format": "source",
+                "url": "https://raw.githubusercontent.com/landergo123/share-files/master/rules/netflix-site-box.json",
+                "update_interval": "1d",
+                "download_detour": "out-proxy"
+            },{
+                "tag": "spotify-site",
+                "type": "remote",
+                "format": "source",
+                "url": "https://raw.githubusercontent.com/landergo123/share-files/master/rules/spotify-site-box.json",
+                "update_interval": "1d",
+                "download_detour": "out-proxy"
+            },{
+                "tag": "amazon-site",
+                "type": "remote",
+                "format": "source",
+                "url": "https://raw.githubusercontent.com/landergo123/share-files/master/rules/amazon-site-box.json",
+                "update_interval": "1d",
+                "download_detour": "out-proxy"
+            },{
+                "tag": "tiktok-site",
+                "type": "remote",
+                "format": "source",
+                "url": "https://raw.githubusercontent.com/landergo123/share-files/master/rules/tiktok-site-box.json",
+                "update_interval": "1d",
+                "download_detour": "out-proxy"
+            },{
+                "tag": "cloudflare-site",
+                "type": "remote",
+                "format": "source",
+                "url": "https://raw.githubusercontent.com/landergo123/share-files/master/rules/cloudflare-site-box.json",
+                "update_interval": "1d",
+                "download_detour": "out-proxy"
+            },{
+                "tag": "ipapis-site",
+                "type": "remote",
+                "format": "source",
+                "url": "https://raw.githubusercontent.com/landergo123/share-files/master/rules/ipapis-site-box.json",
+                "update_interval": "1d",
+                "download_detour": "out-proxy"
+            },{
+                "tag": "proxy-custom-site",
+                "type": "remote",
+                "format": "source",
+                "url": "https://raw.githubusercontent.com/landergo123/share-files/master/rules/proxy-custom-site-box.json",
+                "update_interval": "1d",
+                "download_detour": "out-proxy"
+            },{
+                "tag": "proxy-custom-ip",
+                "type": "remote",
+                "format": "source",
+                "url": "https://raw.githubusercontent.com/landergo123/share-files/master/rules/proxy-custom-ip-box.json",
+                "update_interval": "1d",
+                "download_detour": "out-proxy"
+            },{
+                "tag": "proxy-3rd-site",
+                "type": "remote",
+                "format": "source",
+                "url": "https://raw.githubusercontent.com/landergo123/share-files/master/rules/proxy-3rd-site-box.json",
+                "update_interval": "1d",
+                "download_detour": "out-proxy"
+            },{
+                "tag": "proxy-3rd-ip",
+                "type": "remote",
+                "format": "source",
+                "url": "https://raw.githubusercontent.com/landergo123/share-files/master/rules/proxy-3rd-ip-box.json",
+                "update_interval": "1d",
+                "download_detour": "out-proxy"
+            },{
+                "tag": "cn-custom-site",
+                "type": "remote",
+                "format": "source",
+                "url": "https://raw.githubusercontent.com/landergo123/share-files/master/rules/cn-custom-site-box.json",
+                "update_interval": "1d",
+                "download_detour": "out-proxy"
+            },{
+                "tag": "cn-custom-ip",
+                "type": "remote",
+                "format": "source",
+                "url": "https://raw.githubusercontent.com/landergo123/share-files/master/rules/cn-custom-ip-box.json",
+                "update_interval": "1d",
+                "download_detour": "out-proxy"
+            },{
+                "tag": "cn-3rd-site",
+                "type": "remote",
+                "format": "source",
+                "url": "https://raw.githubusercontent.com/landergo123/share-files/master/rules/cn-3rd-site-box.json",
+                "update_interval": "1d",
+                "download_detour": "out-proxy"
+            },{
+                "tag": "cn-3rd-ip",
+                "type": "remote",
+                "format": "source",
+                "url": "https://raw.githubusercontent.com/landergo123/share-files/master/rules/cn-3rd-ip-box.json",
+                "update_interval": "1d",
+                "download_detour": "out-proxy"
+            },{
+                "tag": "monitor-site",
+                "type": "remote",
+                "format": "source",
+                "url": "https://raw.githubusercontent.com/landergo123/share-files/master/rules/monitor-site-box.json",
+                "update_interval": "1d",
+                "download_detour": "out-proxy"
+            }
+        ]
+    }
 }
 EOF
 # sing_box_config_save---------------end--
@@ -740,413 +912,918 @@ sing_box_config_show_box() {
   print_message "+-----------------------------------------------------------------------------+"
     cat << EOF
 {
-	"log": {
-		"disabled": false,
-		"level": "info",
-		"timestamp": true
-	},
-	"dns": {
-		"strategy": "ipv4_only",
-		"final": "block-dns",
-		"servers": [
-			{
-				"tag": "proxy-dns",
-				"address": "https://cloudflare-dns.com/dns-query",
-				"address_resolver": "default-dns",
-				"detour": "proxy-out"
-			},{
-				"tag": "fakeip-dns",
-				"address": "fakeip"
-			},{
-				"tag": "direct-dns",
-				"address": "https://dns.alidns.com/dns-query",
-				"address_resolver": "default-dns",
-				"detour": "direct-out"
-			},{
-				"tag": "default-dns",
-				"address": "https://223.5.5.5/dns-query",
-				"detour": "direct-out"
-			},{
-				"tag": "block-dns",
-				"address": "rcode://refused"
-			}
-		],
-		"rules": [
-			{
-				"outbound": "any",
-				"server": "default-dns"
-			},{
-				"clash_mode": "Global",
-				"rewrite_ttl": 1,
-				"server": "fakeip-dns"
-			},{
-				"clash_mode": "Direct",
-				"server": "direct-dns"
-			},{
-				"rule_set": [
-					"geosite-proxy-3rd",
-					"geosite-proxy-custom"
-				],
-				"rewrite_ttl": 1,
-				"server": "fakeip-dns"
-			},{
-				"rule_set": [
-					"geosite-cn-3rd",
-					"geosite-cn-custom"
-				],
-				"invert": false,
-				"server": "direct-dns"
-			},{
-				"query_type": [
-					"A",
-					"AAAA"
-				],
-				"rewrite_ttl": 1,
-				"server": "fakeip-dns"
-			}
-		],
-		"fakeip": {
-			"enabled": true,
-			"inet4_range": "198.18.0.0/15",
-			"inet6_range": "fc00::/18"
-		},
-		"independent_cache": true
-	},
-	"inbounds": [
-		{
-			"tag": "tun-in",
-			"type": "tun",
-			"interface_name": "boxtun0",
-			"address": [
-				"172.19.0.1/30",
-				"fdfe:dcba:6789::1/126"
-			],
-			"auto_route": true,
-			"strict_route": true,
-			"route_address": [
-				"0.0.0.0/1",
-				"128.0.0.0/1",
-				"::/1",
-				"8000::/1"
-			],
-			"mtu": 1400,
-			"stack": "mixed",
-			"sniff": false,
-			"sniff_override_destination": false
-		}
-	],
-	"outbounds": [
-		{
-			"tag": "reality-out",
-			"type": "vless",
-			"server": "${ip}",
-			"server_port": ${global_reality_port},
-			"uuid": "${global_reality_auth_password}",
-			"flow": "xtls-rprx-vision",
-			"packet_encoding": "xudp",
-			"tls": {
-				"enabled": true,
-				"server_name": "${global_reality_tls_sni}",
-				"utls": {
-					"enabled": true,
-					"fingerprint": "chrome"
-				},
-				"reality": {
-					"enabled": true,
-					"public_key": "${global_reality_tls_public_key}",
-					"short_id": "${global_reality_tls_random}"
-				}
-			}
-		},{
-			"tag": "hysteria2-out",
-			"type": "hysteria2",
-			"server": "$ip",
-			"server_port": ${global_hysteria2_port},
-			"up_mbps": 100,
-			"down_mbps": 100,
-			"password": "${global_hysteria2_auth_password}",
-			"obfs": {
-				"type": "salamander",
-				"password": "${global_hysteria2_obfs_password}"
-			},
-			"tls": {
-				"enabled": true,
-				"server_name": "${global_hysteria2_tls_sni}",
-				"insecure": true,
-				"alpn": [
-					"h3"
-				]
-			}
-		},{
-			"tag": "vmess-ws-out",
-			"type": "vmess",
-			"server": "$argo",
-			"server_port": ${global_vmess_ws_port},
-			"uuid": "${global_vmess_ws_auth_password}",
-			"alter_id": 0,
-			"security": "auto",
-			"tls": {
-				"enabled": true,
-				"server_name": "$argo",
-				"insecure": true,
-				"utls": {
-					"enabled": true,
-					"fingerprint": "chrome"
-				}
-			},
-			"transport": {
-				"type": "ws",
-				"path": "${global_vmess_ws_path}",
-				"headers": {
-					"Host": ["$argo"]
-				}
-			}
-		},{
-			"tag": "urltest-out",
-			"type": "urltest",
-			"interrupt_exist_connections": true,
-			"outbounds": [
-				"hysteria2-out",
-				"vmess-ws-out",
-				"reality-out"
-			]
-		},{
-			"tag": "proxy-out",
-			"type": "selector",
-			"interrupt_exist_connections": true,
-			"outbounds": [
-				"urltest-out",
-				"hysteria2-out",
-				"vmess-ws-out",
-				"reality-out"
-			],
-			"default": "urltest-out"
-		},{
-			"tag": "download-out",
-			"type": "selector",
-			"interrupt_exist_connections": true,
-			"outbounds": [
-				"urltest-out"
-			],
-			"default": "urltest-out"
-		},{
-			"tag": "dns-out",
-			"type": "dns"
-		}, {
-			"tag": "direct-out",
-			"type": "direct"
-		}, {
-			"tag": "block-out",
-			"type": "block"
-		}
-	],
-	"route": {
-		"auto_detect_interface": true,
-		"final": "block-out",
-		"rules": [
-			{
-				"type": "logical",
-				"mode": "or",
-				"rules": [
-					{
-						"protocol": "dns"
-					},{
-						"port": 53
-					}
-				],
-				"outbound": "dns-out"
-			},{
-				"ip_version": 6,
-				"outbound": "block-out"
-			},{
-				"clash_mode": "Global",
-				"outbound": "proxy-out"
-			},{
-				"clash_mode": "Direct",
-				"outbound": "direct-out"
-			},{
-				"type": "logical",
-				"mode": "or",
-				"rules": [
-					{
-						"port": 853
-					},{
-						"network": "udp",
-						"port": 443
-					},{
-						"protocol": "stun"
-					}
-				],
-				"outbound": "block-out"
-			},{
-				"rule_set": [
-					"geo-lan"
-				],
-				"outbound": "direct-out"
-			},{
-				"rule_set": [
-					"geoip-block"
-				],
-				"outbound": "block-out"
-			},{
-				"rule_set": [
-					"geosite-block"
-				],
-				"outbound": "block-out"
-			},{
-				"ip_cidr": [
-					"${ip}/32"
-				],
-				"outbound": "direct-out"
-			},{
-				"domain_suffix": [
-					"github.com",
-					"githubusercontent.com",
-					"gstatic.com",
-					"sagernet.org",
-					"myip.link",
-					"gologin.com",
-					"others.urls"
-				],
-				"ip_cidr": [
-					"5.6.7.8/32"
-				],
-				"outbound": "proxy-out"
-			},{
-				"process_name": [
-					"GoLogin.exe",
-					"gologin.exe",
-					"Telegram.exe"
-				],
-				"outbound": "proxy-out"
-			},{
-				"rule_set": [
-					"geoip-proxy-3rd",
-					"geoip-proxy-custom"
-				],
-				"outbound": "proxy-out"
-			},{
-				"rule_set": [
-					"geosite-proxy-3rd",
-					"geosite-proxy-custom"
-				],
-				"outbound": "proxy-out"
-			},{
-				"rule_set": [
-					"geosite-usincn-block"
-				],
-				"outbound": "block-out"
-			},{
-				"rule_set": [
-					"geoip-cn-3rd",
-					"geoip-cn-custom"
-				],
-				"outbound": "direct-out"
-			},{
-				"rule_set": [
-					"geosite-cn-3rd",
-					"geosite-cn-custom"
-				],
-				"outbound": "direct-out"
-			}
-		],
-		"rule_set": [
-			{
-				"tag": "geoip-block",
-				"type": "remote",
-				"format": "source",
-				"url": "https://raw.githubusercontent.com/landergo123/share-files/master/sbox/rules/geoip-block.json",
-				"update_interval": "1d",
-				"download_detour": "download-out"
-			},{
-				"tag": "geoip-cn-3rd",
-				"type": "remote",
-				"format": "source",
-				"url": "https://raw.githubusercontent.com/landergo123/share-files/master/sbox/rules/geoip-cn-3rd.json",
-				"update_interval": "1d",
-				"download_detour": "download-out"
-			},{
-				"tag": "geoip-cn-custom",
-				"type": "remote",
-				"format": "source",
-				"url": "https://raw.githubusercontent.com/landergo123/share-files/master/sbox/rules/geoip-cn-custom.json",
-				"update_interval": "1d",
-				"download_detour": "download-out"
-			},{
-				"tag": "geoip-proxy-3rd",
-				"type": "remote",
-				"format": "source",
-				"url": "https://raw.githubusercontent.com/landergo123/share-files/master/sbox/rules/geoip-proxy-3rd.json",
-				"update_interval": "1d",
-				"download_detour": "download-out"
-			},{
-				"tag": "geoip-proxy-custom",
-				"type": "remote",
-				"format": "source",
-				"url": "https://raw.githubusercontent.com/landergo123/share-files/master/sbox/rules/geoip-proxy-custom.json",
-				"update_interval": "1d",
-				"download_detour": "download-out"
-			},{
-				"tag": "geosite-block",
-				"type": "remote",
-				"format": "source",
-				"url": "https://raw.githubusercontent.com/landergo123/share-files/master/sbox/rules/geosite-block.json",
-				"update_interval": "1d",
-				"download_detour": "download-out"
-			},{
-				"tag": "geosite-cn-3rd",
-				"type": "remote",
-				"format": "source",
-				"url": "https://raw.githubusercontent.com/landergo123/share-files/master/sbox/rules/geosite-cn-3rd.json",
-				"update_interval": "1d",
-				"download_detour": "download-out"
-			},{
-				"tag": "geosite-cn-custom",
-				"type": "remote",
-				"format": "source",
-				"url": "https://raw.githubusercontent.com/landergo123/share-files/master/sbox/rules/geosite-cn-custom.json",
-				"update_interval": "1d",
-				"download_detour": "download-out"
-			},{
-				"tag": "geosite-proxy-3rd",
-				"type": "remote",
-				"format": "source",
-				"url": "https://raw.githubusercontent.com/landergo123/share-files/master/sbox/rules/geosite-proxy-3rd.json",
-				"update_interval": "1d",
-				"download_detour": "download-out"
-			},{
-				"tag": "geosite-proxy-custom",
-				"type": "remote",
-				"format": "source",
-				"url": "https://raw.githubusercontent.com/landergo123/share-files/master/sbox/rules/geosite-proxy-custom.json",
-				"update_interval": "1d",
-				"download_detour": "download-out"
-			},{
-				"tag": "geo-lan",
-				"type": "remote",
-				"format": "source",
-				"url": "https://raw.githubusercontent.com/landergo123/share-files/master/sbox/rules/geo-lan.json",
-				"update_interval": "1d",
-				"download_detour": "download-out"
-			},{
-				"tag": "geosite-usincn-block",
-				"type": "remote",
-				"format": "source",
-				"url": "https://raw.githubusercontent.com/landergo123/share-files/master/sbox/rules/geosite-usincn-block.json",
-				"update_interval": "1d",
-				"download_detour": "download-out"
-			}
-		]
-	},
-	"experimental": {
-		"clash_api": {
-			"external_controller": "",
-			"default_mode": "Rule"
-		},
-		"cache_file": {
-			"enabled": true
-		}
-	}
+    "log": {
+        "disabled": false,
+        "level": "info",
+        "timestamp": true
+    },
+    "experimental": {
+        "clash_api": {
+            "default_mode": "Rule",
+            "external_controller": "0.0.0.0:9090",
+            "secret": "Abc.123456",
+            "external_ui": "ui",
+            "external_ui_download_url": "https://github.com/MetaCubeX/Yacd-meta/archive/gh-pages.zip",
+            "external_ui_download_detour": "海外大众流量",
+            "access_control_allow_private_network": true
+        },
+        "cache_file": {
+            "enabled": true,
+            "store_fakeip": true
+        }
+    },
+    "inbounds": [
+        {
+            "tag": "in-tun",
+            "type": "tun",
+            "interface_name": "tun0",
+            "auto_route": true,
+            "strict_route": true,
+            "auto_redirect": false,
+            "stack": "system",
+            "mtu": 9000,
+            "address": ["172.19.0.1/30"]
+        }
+    ],
+    "outbounds": [
+        {
+            "tag": "out-reality",
+            "type": "vless",
+            "server": "${ip}",
+            "server_port": ${global_reality_port},
+            "uuid": "${global_reality_auth_password}",
+            "flow": "xtls-rprx-vision",
+            "packet_encoding": "xudp",
+            "tls": {
+                "enabled": true,
+                "server_name": "${global_reality_tls_sni}",
+                "utls": {
+                    "enabled": true,
+                    "fingerprint": "chrome"
+                },
+                "reality": {
+                    "enabled": true,
+                    "public_key": "${global_reality_tls_public_key}",
+                    "short_id": "${global_reality_tls_random}"
+                }
+            }
+        },{
+            "tag": "out-hysteria2",
+            "type": "hysteria2",
+            "server": "$ip",
+            "server_port": ${global_hysteria2_port},
+            "up_mbps": 100,
+            "down_mbps": 100,
+            "password": "${global_hysteria2_auth_password}",
+            "obfs": {
+                "type": "salamander",
+                "password": "${global_hysteria2_obfs_password}"
+            },
+            "tls": {
+                "enabled": true,
+                "server_name": "${global_hysteria2_tls_sni}",
+                "insecure": true,
+                "alpn": [
+                    "h3"
+                ]
+            }
+        },{
+            "tag": "out-vmess-ws",
+            "type": "vmess",
+            "server": "$argo",
+            "server_port": ${global_vmess_ws_port},
+            "uuid": "${global_vmess_ws_auth_password}",
+            "alter_id": 0,
+            "security": "auto",
+            "tls": {
+                "enabled": true,
+                "server_name": "$argo",
+                "insecure": true,
+                "utls": {
+                    "enabled": true,
+                    "fingerprint": "chrome"
+                }
+            },
+            "transport": {
+                "type": "ws",
+                "path": "${global_vmess_ws_path}",
+                "headers": {
+                    "Host": ["$argo"]
+                }
+            }
+        },{
+            "tag": "直连",
+            "type": "direct"
+        },{
+            "tag": "拒绝",
+            "type": "block"
+        },{
+            "tag": "节点选择",
+            "type": "selector",
+            "interrupt_exist_connections": true,
+            "outbounds": ["自动", "out-vmess-ws", "out-hysteria2", "out-reality", "拒绝"],
+            "default": "自动"
+        },{
+            "tag": "自动",
+            "type": "urltest",
+            "interrupt_exist_connections": true,
+            "outbounds": ["out-vmess-ws", "out-hysteria2", "out-reality"]
+        },{
+            "tag": "全局流量（全局模式可用）",
+            "type": "selector",
+            "interrupt_exist_connections": true,
+            "outbounds": ["节点选择", "out-vmess-ws", "out-hysteria2", "out-reality", "直连", "拒绝"],
+            "default": "节点选择"
+        },{
+            "tag": "WiFi-202",
+            "type": "selector",
+            "interrupt_exist_connections": true,
+            "outbounds": ["节点选择", "out-vmess-ws", "out-hysteria2", "out-reality", "直连", "拒绝"],
+            "default": "节点选择"
+        },{
+            "tag": "IP地理位置",
+            "type": "selector",
+            "interrupt_exist_connections": true,
+            "outbounds": ["节点选择", "out-vmess-ws", "out-hysteria2", "out-reality", "直连", "拒绝"],
+            "default": "节点选择"
+        },{
+            "tag": "Web监控",
+            "type": "selector",
+            "interrupt_exist_connections": true,
+            "outbounds": ["节点选择", "out-vmess-ws", "out-hysteria2", "out-reality", "直连", "拒绝"],
+            "default": "拒绝"
+        },{
+            "tag": "Google",
+            "type": "selector",
+            "interrupt_exist_connections": true,
+            "outbounds": ["节点选择", "out-vmess-ws", "out-hysteria2", "out-reality", "直连", "拒绝"],
+            "default": "节点选择"
+        },{
+            "tag": "Microsoft",
+            "type": "selector",
+            "interrupt_exist_connections": true,
+            "outbounds": ["节点选择", "out-vmess-ws", "out-hysteria2", "out-reality", "直连", "拒绝"],
+            "default": "节点选择"
+        },{
+            "tag": "Apple",
+            "type": "selector",
+            "interrupt_exist_connections": true,
+            "outbounds": ["节点选择", "out-vmess-ws", "out-hysteria2", "out-reality", "直连", "拒绝"],
+            "default": "节点选择"
+        },{
+            "tag": "Telegram",
+            "type": "selector",
+            "interrupt_exist_connections": true,
+            "outbounds": ["节点选择", "out-vmess-ws", "out-hysteria2", "out-reality", "直连", "拒绝"],
+            "default": "节点选择"
+        },{
+            "tag": "AI",
+            "type": "selector",
+            "interrupt_exist_connections": true,
+            "outbounds": ["节点选择", "out-vmess-ws", "out-hysteria2", "out-reality", "直连", "拒绝"],
+            "default": "节点选择"
+        },{
+            "tag": "BitCoin",
+            "type": "selector",
+            "interrupt_exist_connections": true,
+            "outbounds": ["节点选择", "out-vmess-ws", "out-hysteria2", "out-reality", "直连", "拒绝"],
+            "default": "节点选择"
+        },{
+            "tag": "Meta",
+            "type": "selector",
+            "interrupt_exist_connections": true,
+            "outbounds": ["节点选择", "out-vmess-ws", "out-hysteria2", "out-reality", "直连", "拒绝"],
+            "default": "节点选择"
+        },{
+            "tag": "Twitter",
+            "type": "selector",
+            "interrupt_exist_connections": true,
+            "outbounds": ["节点选择", "out-vmess-ws", "out-hysteria2", "out-reality", "直连", "拒绝"],
+            "default": "节点选择"
+        },{
+            "tag": "Netflix",
+            "type": "selector",
+            "interrupt_exist_connections": true,
+            "outbounds": ["节点选择", "out-vmess-ws", "out-hysteria2", "out-reality", "直连", "拒绝"],
+            "default": "节点选择"
+        },{
+            "tag": "Spotify",
+            "type": "selector",
+            "interrupt_exist_connections": true,
+            "outbounds": ["节点选择", "out-vmess-ws", "out-hysteria2", "out-reality", "直连", "拒绝"],
+            "default": "节点选择"
+        },{
+            "tag": "Amazon",
+            "type": "selector",
+            "interrupt_exist_connections": true,
+            "outbounds": ["节点选择", "out-vmess-ws", "out-hysteria2", "out-reality", "直连", "拒绝"],
+            "default": "节点选择"
+        },{
+            "tag": "Tiktok",
+            "type": "selector",
+            "interrupt_exist_connections": true,
+            "outbounds": ["节点选择", "out-vmess-ws", "out-hysteria2", "out-reality", "直连", "拒绝"],
+            "default": "拒绝"
+        },{
+            "tag": "Cloudflare",
+            "type": "selector",
+            "interrupt_exist_connections": true,
+            "outbounds": ["节点选择", "out-vmess-ws", "out-hysteria2", "out-reality", "直连", "拒绝"],
+            "default": "节点选择"
+        },{
+            "tag": "海外大众流量",
+            "type": "selector",
+            "interrupt_exist_connections": true,
+            "outbounds": ["节点选择", "out-vmess-ws", "out-hysteria2", "out-reality", "直连", "拒绝"],
+            "default": "节点选择"
+        },{
+            "tag": "海外非大众流量",
+            "type": "selector",
+            "interrupt_exist_connections": true,
+            "outbounds": ["节点选择", "out-vmess-ws", "out-hysteria2", "out-reality", "直连", "拒绝"],
+            "default": "节点选择"
+        },{
+            "tag": "国内域名流量",
+            "type": "selector",
+            "interrupt_exist_connections": true,
+            "outbounds": ["节点选择", "out-vmess-ws", "out-hysteria2", "out-reality", "直连", "拒绝"],
+            "default": "直连"
+        },{
+            "tag": "国内IP流量",
+            "type": "selector",
+            "interrupt_exist_connections": true,
+            "outbounds": ["节点选择", "out-vmess-ws", "out-hysteria2", "out-reality", "直连", "拒绝"],
+            "default": "直连"
+
+        },{
+            "tag": "漏网之鱼",
+            "type": "selector",
+            "interrupt_exist_connections": true,
+            "outbounds": ["节点选择", "out-vmess-ws", "out-hysteria2", "out-reality", "直连", "拒绝"],
+            "default": "节点选择"
+        }
+    ],
+    "dns": {
+        "final": "dns-漏网之鱼",
+        "strategy": "ipv4_only",
+        "disable_cache": false,
+        "independent_cache": true,
+        "reverse_mapping": true,
+        "cache_capacity": 81920,
+        "servers": [
+            {
+                "tag": "dns-漏网之鱼",
+                "type": "https",
+                "server": "1.1.1.1",
+                "detour": "漏网之鱼"
+            },{
+                "tag": "dns-全局流量",
+                "type": "https",
+                "server": "1.1.1.1",
+                "detour": "全局流量（全局模式可用）"
+            },{
+                "tag": "dns-fakeip",
+                "type": "fakeip",
+                "inet4_range": "198.18.0.0/15",
+                "inet6_range": "fc00::/18"
+            },{
+                "tag": "dns-local",
+                "type": "https",
+                "server": "223.5.5.5"
+            },{
+                "tag": "dns-block",
+                "type": "tcp",
+                "server": "127.0.0.1",
+                "server_port": 32153,
+                "connect_timeout": "10ms"
+            },{
+                "tag": "dns-google",
+                "type": "https",
+                "server": "1.1.1.1",
+                "detour": "Google"
+            },{
+                "tag": "dns-microsoft",
+                "type": "https",
+                "server": "1.1.1.1",
+                "detour": "Microsoft"
+            },{
+                "tag": "dns-apple",
+                "type": "https",
+                "server": "1.1.1.1",
+                "detour": "Apple"
+            },{
+                "tag": "dns-telegram",
+                "type": "https",
+                "server": "1.1.1.1",
+                "detour": "Telegram"
+            },{
+                "tag": "dns-bitcoin",
+                "type": "https",
+                "server": "1.1.1.1",
+                "detour": "BitCoin"
+            },{
+                "tag": "dns-AI",
+                "type": "https",
+                "server": "1.1.1.1",
+                "detour": "AI"
+            },{
+                "tag": "dns-meta",
+                "type": "https",
+                "server": "1.1.1.1",
+                "detour": "Meta"
+            },{
+                "tag": "dns-twitter",
+                "type": "https",
+                "server": "1.1.1.1",
+                "detour": "Twitter"
+            },{
+                "tag": "dns-netflix",
+                "type": "https",
+                "server": "1.1.1.1",
+                "detour": "Netflix"
+            },{
+                "tag": "dns-spotify",
+                "type": "https",
+                "server": "1.1.1.1",
+                "detour": "Spotify"
+            },{
+                "tag": "dns-amazon",
+                "type": "https",
+                "server": "1.1.1.1",
+                "detour": "Amazon"
+            },{
+                "tag": "dns-tiktok",
+                "type": "https",
+                "server": "1.1.1.1",
+                "detour": "Tiktok"
+            },{
+                "tag": "dns-cloudflare",
+                "type": "https",
+                "server": "1.1.1.1",
+                "detour": "Cloudflare"
+            },{
+                "tag": "dns-IP地理位置",
+                "type": "https",
+                "server": "1.1.1.1",
+                "detour": "IP地理位置"
+            },{
+                "tag": "dns-Web监控",
+                "type": "https",
+                "server": "1.1.1.1",
+                "detour": "Web监控"
+            },{
+                "tag": "dns-海外大众流量",
+                "type": "https",
+                "server": "1.1.1.1",
+                "detour": "海外大众流量"
+            },{
+                "tag": "dns-海外非大众流量",
+                "type": "https",
+                "server": "1.1.1.1",
+                "detour": "海外非大众流量"
+            },{
+                "tag": "dns-国内域名流量",
+                "type": "https",
+                "server": "223.5.5.5",
+                "detour": "国内域名流量"
+            },{
+                "tag": "dns-WiFi-202",
+                "type": "udp",
+                "server": "1.1.1.1",
+                "detour": "WiFi-202"
+            }
+        ],
+        "rules": [
+            {
+                "rule_set": ["dns-site"],
+                "action": "predefined",
+                "rcode": "NOERROR"
+            },{
+                "source_ip_cidr": "192.168.202.0/24",
+                "server": "dns-WiFi-202"
+            },{
+                "clash_mode": "Direct",
+                "server": "dns-local"
+            },{
+                "clash_mode": "Global",
+                "server": "dns-全局流量"
+            },{
+                "type": "logical",
+                "mode": "and",
+                "rules": [{"rule_set": ["ipapis-site"]}, {"query_type": ["A", "AAAA"]}],
+                "server": "dns-fakeip",
+                "rewrite_ttl": 1
+            },{
+                "type": "logical",
+                "mode": "and",
+                "rules": [{"rule_set": ["ipapis-site"]}, {"query_type": ["A", "AAAA"], "invert": true}],
+                "server": "dns-IP地理位置"
+            },{
+                "type": "logical",
+                "mode": "and",
+                "rules": [{"rule_set": ["monitor-site"]}, {"query_type": ["A", "AAAA"]}],
+                "server": "dns-fakeip",
+                "rewrite_ttl": 1
+            },{
+                "type": "logical",
+                "mode": "and",
+                "rules": [{"rule_set": ["monitor-site"]}, {"query_type": ["A", "AAAA"], "invert": true}],
+                "server": "dns-Web监控"
+            },{
+                "type": "logical",
+                "mode": "and",
+                "rules": [{"rule_set": ["google-site"]}, {"query_type": ["A", "AAAA"]}],
+                "server": "dns-fakeip",
+                "rewrite_ttl": 1
+            },{
+                "type": "logical",
+                "mode": "and",
+                "rules": [{"rule_set": ["google-site"]}, {"query_type": ["A", "AAAA"], "invert": true}],
+                "server": "dns-google"
+            },{
+                "type": "logical",
+                "mode": "and",
+                "rules": [{"rule_set": ["microsoft-site"]}, {"query_type": ["A", "AAAA"]}],
+                "server": "dns-fakeip",
+                "rewrite_ttl": 1
+            },{
+                "type": "logical",
+                "mode": "and",
+                "rules": [{"rule_set": ["microsoft-site"]}, {"query_type": ["A", "AAAA"], "invert": true}],
+                "server": "dns-microsoft"
+            },{
+                "type": "logical",
+                "mode": "and",
+                "rules": [{"rule_set": ["apple-site"]}, {"query_type": ["A", "AAAA"]}],
+                "server": "dns-fakeip",
+                "rewrite_ttl": 1
+            },{
+                "type": "logical",
+                "mode": "and",
+                "rules": [{"rule_set": ["apple-site"]}, {"query_type": ["A", "AAAA"], "invert": true}],
+                "server": "dns-apple"
+            },{
+                "type": "logical",
+                "mode": "and",
+                "rules": [{"rule_set": ["telegram-site"]}, {"query_type": ["A", "AAAA"]}],
+                "server": "dns-fakeip",
+                "rewrite_ttl": 1
+            },{
+                "type": "logical",
+                "mode": "and",
+                "rules": [{"rule_set": ["telegram-site"]}, {"query_type": ["A", "AAAA"], "invert": true}],
+                "server": "dns-telegram"
+            },{
+                "type": "logical",
+                "mode": "and",
+                "rules": [{"rule_set": ["ai-site", "openai-site"]}, {"query_type": ["A", "AAAA"]}],
+                "server": "dns-fakeip",
+                "rewrite_ttl": 1
+            },{
+                "type": "logical",
+                "mode": "and",
+                "rules": [{"rule_set": ["ai-site", "openai-site"]}, {"query_type": ["A", "AAAA"], "invert": true}],
+                "server": "dns-AI"
+            },{
+                "type": "logical",
+                "mode": "and",
+                "rules": [{"rule_set": ["bitcoin-site"]}, {"query_type": ["A", "AAAA"]}],
+                "server": "dns-fakeip",
+                "rewrite_ttl": 1
+            },{
+                "type": "logical",
+                "mode": "and",
+                "rules": [{"rule_set": ["bitcoin-site"]}, {"query_type": ["A", "AAAA"], "invert": true}],
+                "server": "dns-bitcoin"
+            },{
+                "type": "logical",
+                "mode": "and",
+                "rules": [{"rule_set": ["meta-site"]}, {"query_type": ["A", "AAAA"]}],
+                "server": "dns-fakeip",
+                "rewrite_ttl": 1
+            },{
+                "type": "logical",
+                "mode": "and",
+                "rules": [{"rule_set": ["meta-site"]}, {"query_type": ["A", "AAAA"], "invert": true}],
+                "server": "dns-meta"
+            },{
+                "type": "logical",
+                "mode": "and",
+                "rules": [{"rule_set": ["twitter-site"]}, {"query_type": ["A", "AAAA"]}],
+                "server": "dns-fakeip",
+                "rewrite_ttl": 1
+            },{
+                "type": "logical",
+                "mode": "and",
+                "rules": [{"rule_set": ["twitter-site"]}, {"query_type": ["A", "AAAA"], "invert": true}],
+                "server": "dns-twitter"
+            },{
+                "type": "logical",
+                "mode": "and",
+                "rules": [{"rule_set": ["netflix-site"]}, {"query_type": ["A", "AAAA"]}],
+                "server": "dns-fakeip",
+                "rewrite_ttl": 1
+            },{
+                "type": "logical",
+                "mode": "and",
+                "rules": [{"rule_set": ["netflix-site"]}, {"query_type": ["A", "AAAA"], "invert": true}],
+                "server": "dns-netflix"
+            },{
+                "type": "logical",
+                "mode": "and",
+                "rules": [{"rule_set": ["spotify-site"]}, {"query_type": ["A", "AAAA"]}],
+                "server": "dns-fakeip",
+                "rewrite_ttl": 1
+            },{
+                "type": "logical",
+                "mode": "and",
+                "rules": [{"rule_set": ["spotify-site"]}, {"query_type": ["A", "AAAA"], "invert": true}],
+                "server": "dns-spotify"
+            },{
+                "type": "logical",
+                "mode": "and",
+                "rules": [{"rule_set": ["amazon-site"]}, {"query_type": ["A", "AAAA"]}],
+                "server": "dns-fakeip",
+                "rewrite_ttl": 1
+            },{
+                "type": "logical",
+                "mode": "and",
+                "rules": [{"rule_set": ["amazon-site"]}, {"query_type": ["A", "AAAA"], "invert": true}],
+                "server": "dns-amazon"
+            },{
+                "type": "logical",
+                "mode": "and",
+                "rules": [{"rule_set": ["tiktok-site"]}, {"query_type": ["A", "AAAA"]}],
+                "server": "dns-fakeip",
+                "rewrite_ttl": 1
+            },{
+                "type": "logical",
+                "mode": "and",
+                "rules": [{"rule_set": ["tiktok-site"]}, {"query_type": ["A", "AAAA"], "invert": true}],
+                "server": "dns-tiktok"
+            },{
+                "type": "logical",
+                "mode": "and",
+                "rules": [{"rule_set": ["cloudflare-site"]}, {"query_type": ["A", "AAAA"]}],
+                "server": "dns-fakeip",
+                "rewrite_ttl": 1
+            },{
+                "type": "logical",
+                "mode": "and",
+                "rules": [{"rule_set": ["cloudflare-site"]}, {"query_type": ["A", "AAAA"], "invert": true}],
+                "server": "dns-cloudflare"
+            },{
+                "type": "logical",
+                "mode": "and",
+                "rules": [{"rule_set": ["proxy-custom-site"]}, {"query_type": ["A", "AAAA"]}],
+                "server": "dns-fakeip",
+                "rewrite_ttl": 1
+            },{
+                "type": "logical",
+                "mode": "and",
+                "rules": [{"rule_set": ["proxy-custom-site"]}, {"query_type": ["A", "AAAA"], "invert": true}],
+                "server": "dns-海外大众流量"
+            },{
+                "type": "logical",
+                "mode": "and",
+                "rules": [{"rule_set": ["proxy-3rd-site"]}, {"query_type": ["A", "AAAA"]}],
+                "server": "dns-fakeip",
+                "rewrite_ttl": 1
+            },{
+                "type": "logical",
+                "mode": "and",
+                "rules": [{"rule_set": ["proxy-3rd-site"]}, {"query_type": ["A", "AAAA"], "invert": true}],
+                "server": "dns-海外非大众流量"
+            },{
+                "rule_set": ["cn-custom-site", "cn-3rd-site"],
+                "server": "dns-国内域名流量"
+            },{
+                "source_port_range": ["0:65535"],
+                "server": "dns-漏网之鱼"
+            }
+        ]
+    },
+    "route": {
+        "final": "拒绝",
+        "auto_detect_interface": true,
+        "default_domain_resolver": "dns-local",
+        "rules": [
+            {
+                "ip_version": 6,
+                "outbound": "拒绝"
+            },{
+                "action": "sniff",
+                "sniffer": ["dns", "stun", "bittorrent", "dtls"],
+                "timeout": "500ms"
+            },{
+                "type": "logical",
+                "mode": "or",
+                "rules": [{"protocol": "dns"}, {"port": 53}],
+                "action": "hijack-dns"
+            },{
+                "ip_is_private": true,
+                "outbound": "直连"
+            },{
+                "ip_cidr": ["104.223.108.250/32", "104.168.109.249/32"],
+                "domain_suffix": ["we-medias.shop", "wine168.shop", "wine-bars.shop"],
+                "outbound": "直连"
+            },{
+                "type": "logical",
+                "mode": "or",
+                "rules": [{"port": 853},{"network": "udp", "port": 443},{"protocol": ["stun", "dtls", "bittorrent"]},{"rule_set": ["dns-site", "dns-ip"]}],
+                "outbound": "拒绝"
+            },{
+                "source_ip_cidr": "192.168.202.0/24",
+                "outbound": "WiFi-202"
+            },{
+                "clash_mode": "Direct",
+                "outbound": "直连"
+            },{
+                "clash_mode": "Global",
+                "outbound": "全局流量（全局模式可用）"
+            },{
+                "rule_set": ["ipapis-site"],
+                "outbound": "IP地理位置"
+            },{
+                "rule_set": ["monitor-site"],
+                "outbound": "Web监控"
+            },{
+                "rule_set": ["google-site", "google-ip"],
+                "outbound": "Google"
+            },{
+                "rule_set": ["microsoft-site", "microsoft-ip"],
+                "outbound": "Microsoft"
+            },{
+                "rule_set": ["apple-site", "apple-ip"],
+                "outbound": "Apple"
+            },{
+                "rule_set": ["telegram-site", "telegram-ip"],
+                "outbound": "Telegram"
+            },{
+                "rule_set": ["ai-site", "ai-ip", "openai-site"],
+                "outbound": "AI"
+            },{
+                "rule_set": ["bitcoin-site"],
+                "outbound": "BitCoin"
+            },{
+                "rule_set": ["meta-site"],
+                "outbound": "Meta"
+            },{
+                "rule_set": ["twitter-site"],
+                "outbound": "Twitter"
+            },{
+                "rule_set": ["netflix-site"],
+                "outbound": "Netflix"
+            },{
+                "rule_set": ["spotify-site"],
+                "outbound": "Spotify"
+            },{
+                "rule_set": ["amazon-site"],
+                "outbound": "Amazon"
+            },{
+                "rule_set": ["tiktok-site"],
+                "outbound": "Tiktok"
+            },{
+                "rule_set": ["cloudflare-site"],
+                "outbound": "Cloudflare"
+            },{
+                "rule_set": ["proxy-custom-site", "proxy-custom-ip"],
+                "outbound": "海外大众流量"
+            },{
+                "rule_set": ["proxy-3rd-site", "proxy-3rd-ip"],
+                "outbound": "海外非大众流量"
+            },{
+                "rule_set": ["cn-custom-site", "cn-3rd-site"],
+                "outbound": "国内域名流量"
+            },{
+                "rule_set": ["cn-custom-ip", "cn-3rd-ip"],
+                "outbound": "国内IP流量"
+            },{
+                "source_port_range": ["0:65535"],
+                "outbound": "漏网之鱼"
+            }
+        ],
+        "rule_set": [
+            {
+                "tag": "dns-site",
+                "type": "remote",
+                "format": "source",
+                "url": "https://raw.githubusercontent.com/landergo123/share-files/master/rules/dns-site-box.json",
+                "update_interval": "1d",
+                "download_detour": "海外大众流量"
+            },{
+                "tag": "dns-ip",
+                "type": "remote",
+                "format": "source",
+                "url": "https://raw.githubusercontent.com/landergo123/share-files/master/rules/dns-ip-box.json",
+                "update_interval": "1d",
+                "download_detour": "海外大众流量"
+            },{
+                "tag": "google-site",
+                "type": "remote",
+                "format": "source",
+                "url": "https://raw.githubusercontent.com/landergo123/share-files/master/rules/google-site-box.json",
+                "update_interval": "1d",
+                "download_detour": "海外大众流量"
+            },{
+                "tag": "google-ip",
+                "type": "remote",
+                "format": "source",
+                "url": "https://raw.githubusercontent.com/landergo123/share-files/master/rules/google-ip-box.json",
+                "update_interval": "1d",
+                "download_detour": "海外大众流量"
+            },{
+                "tag": "microsoft-site",
+                "type": "remote",
+                "format": "source",
+                "url": "https://raw.githubusercontent.com/landergo123/share-files/master/rules/microsoft-site-box.json",
+                "update_interval": "1d",
+                "download_detour": "海外大众流量"
+            },{
+                "tag": "microsoft-ip",
+                "type": "remote",
+                "format": "source",
+                "url": "https://raw.githubusercontent.com/landergo123/share-files/master/rules/microsoft-ip-box.json",
+                "update_interval": "1d",
+                "download_detour": "海外大众流量"
+            },{
+                "tag": "apple-site",
+                "type": "remote",
+                "format": "source",
+                "url": "https://raw.githubusercontent.com/landergo123/share-files/master/rules/apple-site-box.json",
+                "update_interval": "1d",
+                "download_detour": "海外大众流量"
+            },{
+                "tag": "apple-ip",
+                "type": "remote",
+                "format": "source",
+                "url": "https://raw.githubusercontent.com/landergo123/share-files/master/rules/apple-ip-box.json",
+                "update_interval": "1d",
+                "download_detour": "海外大众流量"
+            },{
+                "tag": "telegram-site",
+                "type": "remote",
+                "format": "source",
+                "url": "https://raw.githubusercontent.com/landergo123/share-files/master/rules/telegram-site-box.json",
+                "update_interval": "1d",
+                "download_detour": "海外大众流量"
+            },{
+                "tag": "telegram-ip",
+                "type": "remote",
+                "format": "source",
+                "url": "https://raw.githubusercontent.com/landergo123/share-files/master/rules/telegram-ip-box.json",
+                "update_interval": "1d",
+                "download_detour": "海外大众流量"
+            },{
+                "tag": "ai-site",
+                "type": "remote",
+                "format": "source",
+                "url": "https://raw.githubusercontent.com/landergo123/share-files/master/rules/aitool-site-box.json",
+                "update_interval": "1d",
+                "download_detour": "海外大众流量"
+            },{
+                "tag": "ai-ip",
+                "type": "remote",
+                "format": "source",
+                "url": "https://raw.githubusercontent.com/landergo123/share-files/master/rules/aitool-ip-box.json",
+                "update_interval": "1d",
+                "download_detour": "海外大众流量"
+            },{
+                "tag": "openai-site",
+                "type": "remote",
+                "format": "source",
+                "url": "https://raw.githubusercontent.com/landergo123/share-files/master/rules/openai-site-box.json",
+                "update_interval": "1d",
+                "download_detour": "海外大众流量"
+            },{
+                "tag": "bitcoin-site",
+                "type": "remote",
+                "format": "source",
+                "url": "https://raw.githubusercontent.com/landergo123/share-files/master/rules/bitcoin-site-box.json",
+                "update_interval": "1d",
+                "download_detour": "海外大众流量"
+            },{
+                "tag": "meta-site",
+                "type": "remote",
+                "format": "source",
+                "url": "https://raw.githubusercontent.com/landergo123/share-files/master/rules/meta-site-box.json",
+                "update_interval": "1d",
+                "download_detour": "海外大众流量"
+            },{
+                "tag": "twitter-site",
+                "type": "remote",
+                "format": "source",
+                "url": "https://raw.githubusercontent.com/landergo123/share-files/master/rules/twitter-site-box.json",
+                "update_interval": "1d",
+                "download_detour": "海外大众流量"
+            },{
+                "tag": "netflix-site",
+                "type": "remote",
+                "format": "source",
+                "url": "https://raw.githubusercontent.com/landergo123/share-files/master/rules/netflix-site-box.json",
+                "update_interval": "1d",
+                "download_detour": "海外大众流量"
+            },{
+                "tag": "spotify-site",
+                "type": "remote",
+                "format": "source",
+                "url": "https://raw.githubusercontent.com/landergo123/share-files/master/rules/spotify-site-box.json",
+                "update_interval": "1d",
+                "download_detour": "海外大众流量"
+            },{
+                "tag": "amazon-site",
+                "type": "remote",
+                "format": "source",
+                "url": "https://raw.githubusercontent.com/landergo123/share-files/master/rules/amazon-site-box.json",
+                "update_interval": "1d",
+                "download_detour": "海外大众流量"
+            },{
+                "tag": "tiktok-site",
+                "type": "remote",
+                "format": "source",
+                "url": "https://raw.githubusercontent.com/landergo123/share-files/master/rules/tiktok-site-box.json",
+                "update_interval": "1d",
+                "download_detour": "海外大众流量"
+            },{
+                "tag": "cloudflare-site",
+                "type": "remote",
+                "format": "source",
+                "url": "https://raw.githubusercontent.com/landergo123/share-files/master/rules/cloudflare-site-box.json",
+                "update_interval": "1d",
+                "download_detour": "海外大众流量"
+            },{
+                "tag": "ipapis-site",
+                "type": "remote",
+                "format": "source",
+                "url": "https://raw.githubusercontent.com/landergo123/share-files/master/rules/ipapis-site-box.json",
+                "update_interval": "1d",
+                "download_detour": "海外大众流量"
+            },{
+                "tag": "proxy-custom-site",
+                "type": "remote",
+                "format": "source",
+                "url": "https://raw.githubusercontent.com/landergo123/share-files/master/rules/proxy-custom-site-box.json",
+                "update_interval": "1d",
+                "download_detour": "海外大众流量"
+            },{
+                "tag": "proxy-custom-ip",
+                "type": "remote",
+                "format": "source",
+                "url": "https://raw.githubusercontent.com/landergo123/share-files/master/rules/proxy-custom-ip-box.json",
+                "update_interval": "1d",
+                "download_detour": "海外大众流量"
+            },{
+                "tag": "proxy-3rd-site",
+                "type": "remote",
+                "format": "source",
+                "url": "https://raw.githubusercontent.com/landergo123/share-files/master/rules/proxy-3rd-site-box.json",
+                "update_interval": "1d",
+                "download_detour": "海外大众流量"
+            },{
+                "tag": "proxy-3rd-ip",
+                "type": "remote",
+                "format": "source",
+                "url": "https://raw.githubusercontent.com/landergo123/share-files/master/rules/proxy-3rd-ip-box.json",
+                "update_interval": "1d",
+                "download_detour": "海外大众流量"
+            },{
+                "tag": "cn-custom-site",
+                "type": "remote",
+                "format": "source",
+                "url": "https://raw.githubusercontent.com/landergo123/share-files/master/rules/cn-custom-site-box.json",
+                "update_interval": "1d",
+                "download_detour": "海外大众流量"
+            },{
+                "tag": "cn-custom-ip",
+                "type": "remote",
+                "format": "source",
+                "url": "https://raw.githubusercontent.com/landergo123/share-files/master/rules/cn-custom-ip-box.json",
+                "update_interval": "1d",
+                "download_detour": "海外大众流量"
+            },{
+                "tag": "cn-3rd-site",
+                "type": "remote",
+                "format": "source",
+                "url": "https://raw.githubusercontent.com/landergo123/share-files/master/rules/cn-3rd-site-box.json",
+                "update_interval": "1d",
+                "download_detour": "海外大众流量"
+            },{
+                "tag": "cn-3rd-ip",
+                "type": "remote",
+                "format": "source",
+                "url": "https://raw.githubusercontent.com/landergo123/share-files/master/rules/cn-3rd-ip-box.json",
+                "update_interval": "1d",
+                "download_detour": "海外大众流量"
+            },{
+                "tag": "monitor-site",
+                "type": "remote",
+                "format": "source",
+                "url": "https://raw.githubusercontent.com/landergo123/share-files/master/rules/monitor-site-box.json",
+                "update_interval": "1d",
+                "download_detour": "海外大众流量"
+            }
+        ]
+    }
 }
 EOF
 # sing_box_config_show_box ----------------end
@@ -1743,6 +2420,3 @@ case "$option" in
 esac
 
 exit $?
-
-
-
