@@ -525,6 +525,13 @@ EOF
         "output": "${global_box_log_file}",
         "timestamp": true
     },
+    "experimental": {
+        "cache_file": {
+            "enabled": true,
+            "path": "${global_box_home_path}/cache.db",
+            "store_fakeip": true
+        }
+    },
     "inbounds": [
         ${inbounds_str}
     ],
