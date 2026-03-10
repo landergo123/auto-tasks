@@ -926,6 +926,10 @@ sing_box_config_show_box() {
         "timestamp": true
     },
     "experimental": {
+        "cache_file": {
+            "enabled": true,
+            "store_fakeip": true
+        },
         "clash_api": {
             "default_mode": "Rule",
             "external_controller": "0.0.0.0:9090",
@@ -934,10 +938,6 @@ sing_box_config_show_box() {
             "external_ui_download_url": "https://github.com/MetaCubeX/Yacd-meta/archive/gh-pages.zip",
             "external_ui_download_detour": "海外大众流量",
             "access_control_allow_private_network": true
-        },
-        "cache_file": {
-            "enabled": true,
-            "store_fakeip": true
         }
     },
     "inbounds": [
