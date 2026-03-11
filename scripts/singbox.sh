@@ -1046,8 +1046,24 @@ sing_box_config_show_box() {
             "tag": "WiFi-202",
             "type": "selector",
             "interrupt_exist_connections": true,
-            "outbounds": ["节点选择", "out-vmess-ws", "out-hysteria2", "out-reality", "直连", "拒绝"],
-            "default": "节点选择"
+            "outbounds": ["WiFi-202-自动", "节点选择", "out-vmess-ws", "out-hysteria2", "out-reality", "拒绝"],
+            "default": "WiFi-202-自动"
+        },{
+            "tag": "WiFi-202-自动",
+            "type": "urltest",
+            "interrupt_exist_connections": true,
+            "outbounds": ["out-vmess-ws", "out-hysteria2", "out-reality"]
+        },{
+            "tag": "WiFi-203",
+            "type": "selector",
+            "interrupt_exist_connections": true,
+            "outbounds": ["WiFi-203-自动", "节点选择", "out-vmess-ws", "out-hysteria2", "out-reality", "拒绝"],
+            "default": "WiFi-203-自动"
+        },{
+            "tag": "WiFi-203-自动",
+            "type": "urltest",
+            "interrupt_exist_connections": true,
+            "outbounds": ["out-vmess-ws", "out-hysteria2", "out-reality"]
         },{
             "tag": "IP地理位置",
             "type": "selector",
@@ -1296,9 +1312,14 @@ sing_box_config_show_box() {
                 "detour": "国内域名流量"
             },{
                 "tag": "dns-WiFi-202",
-                "type": "udp",
+                "type": "https",
                 "server": "1.1.1.1",
                 "detour": "WiFi-202"
+            },{
+                "tag": "dns-WiFi-203",
+                "type": "https",
+                "server": "1.1.1.1",
+                "detour": "WiFi-203"
             }
         ],
         "rules": [
@@ -1309,6 +1330,9 @@ sing_box_config_show_box() {
             },{
                 "source_ip_cidr": "192.168.202.0/24",
                 "server": "dns-WiFi-202"
+            },{
+                "source_ip_cidr": "192.168.203.0/24",
+                "server": "dns-WiFi-203"
             },{
                 "clash_mode": "Direct",
                 "server": "dns-local"
@@ -1532,7 +1556,7 @@ sing_box_config_show_box() {
                 "ip_is_private": true,
                 "outbound": "直连"
             },{
-                "ip_cidr": ["104.223.108.250/32", "104.168.109.249/32"],
+                "ip_cidr": ["104.223.108.250/32", "104.168.109.249/32", "216.167.67.61/32"],
                 "domain_suffix": ["we-medias.shop", "wine168.shop", "wine-bars.shop"],
                 "outbound": "直连"
             },{
@@ -1543,6 +1567,9 @@ sing_box_config_show_box() {
             },{
                 "source_ip_cidr": "192.168.202.0/24",
                 "outbound": "WiFi-202"
+            },{
+                "source_ip_cidr": "192.168.203.0/24",
+                "outbound": "WiFi-203"
             },{
                 "clash_mode": "Direct",
                 "outbound": "直连"
