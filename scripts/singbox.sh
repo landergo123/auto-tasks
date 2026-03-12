@@ -667,8 +667,11 @@ EOF
             },{
                 "rule_set": [
                     "google-ip",
+                    "google-official-ip",
                     "microsoft-ip",
+                    "microsoft-official-ip",
                     "apple-ip",
+                    "apple-official-ip",
                     "telegram-ip",
                     "ai-ip",
                     "proxy-custom-ip"
@@ -718,6 +721,13 @@ EOF
                 "update_interval": "1d",
                 "download_detour": "out-proxy"
             },{
+                "tag": "google-official-ip",
+                "type": "remote",
+                "format": "source",
+                "url": "https://raw.githubusercontent.com/landergo123/share-files/master/rules/google-official-ip-box.json",
+                "update_interval": "1d",
+                "download_detour": "out-proxy"
+            },{
                 "tag": "microsoft-site",
                 "type": "remote",
                 "format": "source",
@@ -732,6 +742,13 @@ EOF
                 "update_interval": "1d",
                 "download_detour": "out-proxy"
             },{
+                "tag": "microsoft-official-ip",
+                "type": "remote",
+                "format": "source",
+                "url": "https://raw.githubusercontent.com/landergo123/share-files/master/rules/microsoft-official-ip-box.json",
+                "update_interval": "1d",
+                "download_detour": "out-proxy"
+            },{
                 "tag": "apple-site",
                 "type": "remote",
                 "format": "source",
@@ -743,6 +760,13 @@ EOF
                 "type": "remote",
                 "format": "source",
                 "url": "https://raw.githubusercontent.com/landergo123/share-files/master/rules/apple-ip-box.json",
+                "update_interval": "1d",
+                "download_detour": "out-proxy"
+            },{
+                "tag": "apple-official-ip",
+                "type": "remote",
+                "format": "source",
+                "url": "https://raw.githubusercontent.com/landergo123/share-files/master/rules/apple-official-ip-box.json",
                 "update_interval": "1d",
                 "download_detour": "out-proxy"
             },{
@@ -1583,13 +1607,13 @@ sing_box_config_show_box() {
                 "rule_set": ["monitor-site"],
                 "outbound": "Web监控"
             },{
-                "rule_set": ["google-site", "google-ip"],
+                "rule_set": ["google-site", "google-ip", "google-official-ip"],
                 "outbound": "Google"
             },{
-                "rule_set": ["microsoft-site", "microsoft-ip"],
+                "rule_set": ["microsoft-site", "microsoft-ip", "microsoft-official-ip"],
                 "outbound": "Microsoft"
             },{
-                "rule_set": ["apple-site", "apple-ip"],
+                "rule_set": ["apple-site", "apple-ip", "apple-official-ip"],
                 "outbound": "Apple"
             },{
                 "rule_set": ["telegram-site", "telegram-ip"],
@@ -1668,6 +1692,13 @@ sing_box_config_show_box() {
                 "update_interval": "1d",
                 "download_detour": "海外大众流量"
             },{
+                "tag": "google-official-ip",
+                "type": "remote",
+                "format": "source",
+                "url": "https://raw.githubusercontent.com/landergo123/share-files/master/rules/google-official-ip-box.json",
+                "update_interval": "1d",
+                "download_detour": "海外大众流量"
+            },{
                 "tag": "microsoft-site",
                 "type": "remote",
                 "format": "source",
@@ -1682,6 +1713,13 @@ sing_box_config_show_box() {
                 "update_interval": "1d",
                 "download_detour": "海外大众流量"
             },{
+                "tag": "microsoft-official-ip",
+                "type": "remote",
+                "format": "source",
+                "url": "https://raw.githubusercontent.com/landergo123/share-files/master/rules/microsoft-official-ip-box.json",
+                "update_interval": "1d",
+                "download_detour": "海外大众流量"
+            },{
                 "tag": "apple-site",
                 "type": "remote",
                 "format": "source",
@@ -1693,6 +1731,13 @@ sing_box_config_show_box() {
                 "type": "remote",
                 "format": "source",
                 "url": "https://raw.githubusercontent.com/landergo123/share-files/master/rules/apple-ip-box.json",
+                "update_interval": "1d",
+                "download_detour": "海外大众流量"
+            },{
+                "tag": "apple-official-ip",
+                "type": "remote",
+                "format": "source",
+                "url": "https://raw.githubusercontent.com/landergo123/share-files/master/rules/apple-official-ip-box.json",
                 "update_interval": "1d",
                 "download_detour": "海外大众流量"
             },{

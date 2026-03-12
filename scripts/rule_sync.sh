@@ -69,11 +69,13 @@ log_info "主目录: $SCRIPT_DIR"
 log_info "源路径: $SRC_PATH"
 log_info "目标路径: $DEST_PATH"
 
+
+log_info "--- 1. download google/microsoft/apple ip firewall ---------------------"
 # 检查必要命令
 check_command git
 check_command python
 
-# pip install netaddr
+pip install netaddr
 python "$SCRIPT_DIR/gma-ip-official.py" "$DEST_PATH/rules"
 
 # 检查目录和文件
@@ -81,6 +83,8 @@ python "$SCRIPT_DIR/gma-ip-official.py" "$DEST_PATH/rules"
 [ -d "$TARGET_REPO" ] || { log_error "目标仓库不存在: $TARGET_REPO"; exit 1; }
 [ -f "$JAR_PATH" ] || { log_error "JAR文件不存在: $JAR_PATH"; exit 1; }
 
+
+log_info "--- 2. sync(jar) rule from ${SOURCE_REPO} to ${TARGET_REPO} -------------"
 JAVA_CMD=$(find_java)
 log_info "使用 Java: $JAVA_CMD"
 
@@ -96,6 +100,7 @@ log_info "正在运行同步程序..."
 "$JAVA_CMD" -jar "$JAR_PATH" "$SRC_PATH/" "$DEST_PATH/rules/" >> ~/rules_sync_new.log
 log_info "同步程序执行完成"
 
+log_info "--- 3. commit rule change to ${TARGET_REPO} -----------------------------"
 # 步骤3: 提交推送目标仓库
 log_info "正在处理目标仓库: $TARGET_REPO"
 cd "$TARGET_REPO"
@@ -104,11 +109,9 @@ cd "$TARGET_REPO"
 if git diff --quiet && git diff --cached --quiet; then
   log_info "目标仓库无变更，跳过提交"
 else
-  COMMIT_MSG="sync: update rules $(date '+%Y-%m-%d %H:%M:%S')"
+  COMMIT_MSG="update rules $(date '+%Y-%m-%d %H:%M:%S')"
   git add -A
   git commit -m "$COMMIT_MSG"
   git push
   log_info "目标仓库推送完成"
 fi
-
-log_info "全部任务完成"
