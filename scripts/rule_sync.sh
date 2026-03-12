@@ -57,6 +57,10 @@ find_java() {
 }
 
 # ============ 主流程 ============
+log_info "--- PATH=$PATH ---------------------"
+#source "${CONDA_HOME}/etc/profile.d/conda.sh"
+PATH=$PATH:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:$HOME/miniconda3/condabin:$HOME/miniconda3/bin:/opt/softs/miniconda3/condabin:/opt/softs/miniconda3/bin
+log_info "--- PATH=$PATH ---------------------"
 
 SRC_PATH="${1:-$DEFAULT_SRC_PATH}"
 DEST_PATH="${2:-$DEFAULT_DEST_PATH}"
@@ -73,10 +77,14 @@ log_info "目标路径: $DEST_PATH"
 log_info "--- 1. download google/microsoft/apple ip firewall ---------------------"
 # 检查必要命令
 check_command git
+#check_command conda
 check_command python
 
+#conda activate $ENV_NAME
 pip install netaddr
+#conda install -y netaddr
 python "$SCRIPT_DIR/gma-ip-official.py" "$DEST_PATH/rules"
+#conda deactivate
 
 # 检查目录和文件
 [ -d "$SOURCE_REPO" ] || { log_error "源仓库不存在: $SOURCE_REPO"; exit 1; }
