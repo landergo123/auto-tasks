@@ -629,7 +629,7 @@ EOF
             },{
                 "action": "sniff",
                 "sniffer": ["dns", "stun", "bittorrent", "dtls"],
-                "timeout": "500ms"
+                "timeout": "100ms"
             },{
                 "type": "logical",
                 "mode": "or",
@@ -1674,8 +1674,8 @@ sing_box_config_show_box() {
                 "outbound": "拒绝"
             },{
                 "action": "sniff",
-                "sniffer": ["dns", "stun", "bittorrent", "dtls", "http"],
-                "timeout": "300ms"
+                "sniffer": ["dns", "stun", "bittorrent", "dtls"],
+                "timeout": "100ms"
             },{
                 "type": "logical",
                 "mode": "or",
@@ -1696,10 +1696,10 @@ sing_box_config_show_box() {
                 "port": 443,
                 "outbound": "拒绝"
             },{
-                "port": [853, 80],
+                "port": [853],
                 "outbound": "拒绝"
             },{
-                "protocol": ["stun", "dtls", "bittorrent", "http"],
+                "protocol": ["stun", "dtls", "bittorrent"],
                 "outbound": "拒绝"
             },{
                 "inbound": ["in-httpsocks5-cn"],
