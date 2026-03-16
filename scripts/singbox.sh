@@ -639,9 +639,21 @@ EOF
                 "ip_is_private": true,
                 "outbound": "out-reject"
             },{
-                "type": "logical",
-                "mode": "or",
-                "rules": [{"port": 853},{"protocol": ["stun", "dtls", "bittorrent"]},{"rule_set": ["dns-site", "dns-ip"]}],
+                "ip_cidr": ["1.1.1.1/32", "1.0.0.1/32", "2606:4700:4700::1111/128", "2606:4700:4700::1001/128"],
+                "domain_suffix": ["one.one.one.one"],
+                "outbound": "out-proxy"
+            },{
+                "rule_set": ["dns-site", "dns-ip"],
+                "outbound": "out-reject"
+            },{
+                "network": "udp",
+                "port": 443,
+                "outbound": "out-proxy"
+            },{
+                "port": [853],
+                "outbound": "out-reject"
+            },{
+                "protocol": ["stun", "dtls", "bittorrent"],
                 "outbound": "out-reject"
             },{
                 "rule_set": [
@@ -975,10 +987,71 @@ sing_box_config_show_box() {
             "stack": "system",
             "mtu": 9000,
             "address": ["172.19.0.1/30"]
+        },{
+            "tag": "in-httpsocks5-cn",
+            "type": "mixed",
+            "listen": "::",
+            "listen_port": 1980,
+            "set_system_proxy": false
+        },{
+            "tag": "in-httpsocks5-p01",
+            "type": "mixed",
+            "listen": "::",
+            "listen_port": 1981,
+            "set_system_proxy": false
+        },{
+            "tag": "in-httpsocks5-p02",
+            "type": "mixed",
+            "listen": "::",
+            "listen_port": 1982,
+            "set_system_proxy": false
         }
     ],
     "outbounds": [
         {
+            "tag": "out-reality-iplc",
+            "type": "vless",
+            "detour": "专线选择",
+            "server": "${ip}",
+            "server_port": ${global_reality_port},
+            "uuid": "${global_reality_auth_password}",
+            "flow": "xtls-rprx-vision",
+            "packet_encoding": "xudp",
+            "tls": {
+                "enabled": true,
+                "server_name": "${global_reality_tls_sni}",
+                "utls": {
+                    "enabled": true,
+                    "fingerprint": "chrome"
+                },
+                "reality": {
+                    "enabled": true,
+                    "public_key": "${global_reality_tls_public_key}",
+                    "short_id": "${global_reality_tls_random}"
+                }
+            }
+        },{
+            "tag": "out-hysteria2-iplc",
+            "type": "hysteria2",
+            "detour": "专线选择",
+            "server": "$ip",
+            "server_port": ${global_hysteria2_port},
+            "up_mbps": 100,
+            "down_mbps": 100,
+            "password": "${global_hysteria2_auth_password}",
+            "obfs": {
+                "type": "salamander",
+                "password": "${global_hysteria2_obfs_password}"
+            },
+            "tls": {
+                "enabled": true,
+                "server_name": "${global_hysteria2_tls_sni}",
+                "insecure": true,
+                "alpn": [
+                    "h3"
+                ]
+            }
+        },{
             "tag": "out-reality",
             "type": "vless",
             "server": "${ip}",
@@ -1053,41 +1126,54 @@ sing_box_config_show_box() {
             "tag": "节点选择",
             "type": "selector",
             "interrupt_exist_connections": true,
-            "outbounds": ["自动", "out-vmess-ws", "out-hysteria2", "out-reality", "拒绝"],
-            "default": "自动"
+            "outbounds": ["智能节点", "out-vmess-ws", "out-hysteria2", "out-reality", "out-hysteria2-iplc", "out-reality-iplc", "专线选择", "拒绝"],
+            "default": "智能节点"
         },{
-            "tag": "自动",
+            "tag": "智能节点",
             "type": "urltest",
             "interrupt_exist_connections": true,
-            "outbounds": ["out-vmess-ws", "out-hysteria2", "out-reality"]
+            "outbounds": ["out-vmess-ws", "out-hysteria2", "out-reality", "out-reality-iplc"]
+        },{
+            "tag": "专线选择",
+            "type": "selector",
+            "interrupt_exist_connections": true,
+            "outbounds": ["智能专线", "拒绝"],
+            "default": "智能专线"
+        },{
+            "tag": "智能专线",
+            "type": "urltest",
+            "interrupt_exist_connections": true,
+            "outbounds": ["拒绝"]
+        },{
+            "tag": "HttpSocks5-p01",
+            "type": "selector",
+            "interrupt_exist_connections": true,
+            "outbounds": ["节点选择", "out-vmess-ws", "out-hysteria2", "out-reality", "拒绝"],
+            "default": "节点选择"
+        },{
+            "tag": "HttpSocks5-p02",
+            "type": "selector",
+            "interrupt_exist_connections": true,
+            "outbounds": ["节点选择", "out-vmess-ws", "out-hysteria2", "out-reality", "拒绝"],
+            "default": "节点选择"
+        },{
+            "tag": "WiFi-202",
+            "type": "selector",
+            "interrupt_exist_connections": true,
+            "outbounds": ["节点选择", "out-vmess-ws", "out-hysteria2", "out-reality", "拒绝"],
+            "default": "节点选择"
+        },{
+            "tag": "WiFi-203",
+            "type": "selector",
+            "interrupt_exist_connections": true,
+            "outbounds": ["节点选择", "out-vmess-ws", "out-hysteria2", "out-reality", "拒绝"],
+            "default": "节点选择"
         },{
             "tag": "全局流量（全局模式可用）",
             "type": "selector",
             "interrupt_exist_connections": true,
             "outbounds": ["节点选择", "out-vmess-ws", "out-hysteria2", "out-reality", "直连", "拒绝"],
             "default": "节点选择"
-        },{
-            "tag": "WiFi-202",
-            "type": "selector",
-            "interrupt_exist_connections": true,
-            "outbounds": ["WiFi-202-自动", "节点选择", "out-vmess-ws", "out-hysteria2", "out-reality", "拒绝"],
-            "default": "WiFi-202-自动"
-        },{
-            "tag": "WiFi-202-自动",
-            "type": "urltest",
-            "interrupt_exist_connections": true,
-            "outbounds": ["out-vmess-ws", "out-hysteria2", "out-reality"]
-        },{
-            "tag": "WiFi-203",
-            "type": "selector",
-            "interrupt_exist_connections": true,
-            "outbounds": ["WiFi-203-自动", "节点选择", "out-vmess-ws", "out-hysteria2", "out-reality", "拒绝"],
-            "default": "WiFi-203-自动"
-        },{
-            "tag": "WiFi-203-自动",
-            "type": "urltest",
-            "interrupt_exist_connections": true,
-            "outbounds": ["out-vmess-ws", "out-hysteria2", "out-reality"]
         },{
             "tag": "IP地理位置",
             "type": "selector",
@@ -1189,7 +1275,7 @@ sing_box_config_show_box() {
             "type": "selector",
             "interrupt_exist_connections": true,
             "outbounds": ["节点选择", "out-vmess-ws", "out-hysteria2", "out-reality", "直连", "拒绝"],
-            "default": "节点选择"
+            "default": "拒绝"
         },{
             "tag": "国内域名流量",
             "type": "selector",
@@ -1201,14 +1287,14 @@ sing_box_config_show_box() {
             "type": "selector",
             "interrupt_exist_connections": true,
             "outbounds": ["节点选择", "out-vmess-ws", "out-hysteria2", "out-reality", "直连", "拒绝"],
-            "default": "直连"
+            "default": "拒绝"
 
         },{
             "tag": "漏网之鱼",
             "type": "selector",
             "interrupt_exist_connections": true,
             "outbounds": ["节点选择", "out-vmess-ws", "out-hysteria2", "out-reality", "直连", "拒绝"],
-            "default": "节点选择"
+            "default": "拒绝"
         }
     ],
     "dns": {
@@ -1335,6 +1421,16 @@ sing_box_config_show_box() {
                 "server": "223.5.5.5",
                 "detour": "国内域名流量"
             },{
+                "tag": "dns-httpsocks5-p01",
+                "type": "https",
+                "server": "1.1.1.1",
+                "detour": "HttpSocks5-p01"
+            },{
+                "tag": "dns-httpsocks5-p02",
+                "type": "https",
+                "server": "1.1.1.1",
+                "detour": "HttpSocks5-p02"
+            },{
                 "tag": "dns-WiFi-202",
                 "type": "https",
                 "server": "1.1.1.1",
@@ -1348,214 +1444,118 @@ sing_box_config_show_box() {
         ],
         "rules": [
             {
-                "rule_set": ["dns-site"],
-                "action": "predefined",
-                "rcode": "NOERROR"
+                "ip_version": 6,
+                "outbound": "拒绝"
+            },{
+                "action": "sniff",
+                "sniffer": ["dns", "stun", "bittorrent", "dtls", "http"],
+                "timeout": "300ms"
+            },{
+                "type": "logical",
+                "mode": "or",
+                "rules": [{"protocol": "dns"}, {"port": 53}],
+                "action": "hijack-dns"
+            },{
+                "ip_is_private": true,
+                "outbound": "直连"
+            },{
+                "ip_cidr": ["104.223.108.250/32", "104.168.109.249/32", "216.167.67.61/32"],
+                "domain_suffix": ["we-medias.shop", "wine168.shop", "wine-bars.shop", "coolwinebars.shop", "cool-wine-bars.shop", "cool-bars.shop"],
+                "outbound": "直连"
+            },{
+                "rule_set": ["dns-site", "dns-ip"],
+                "outbound": "拒绝"
+            },{
+                "network": "udp",
+                "port": 443,
+                "outbound": "拒绝"
+            },{
+                "port": [853, 80],
+                "outbound": "拒绝"
+            },{
+                "protocol": ["stun", "dtls", "bittorrent", "http"],
+                "outbound": "拒绝"
+            },{
+                "inbound": ["in-httpsocks5-cn"],
+                "outbound": "国内域名流量"
+            },{
+                "inbound": ["in-httpsocks5-p01"],
+                "outbound": "HttpSocks5-p01"
+            },{
+                "inbound": ["in-httpsocks5-p02"],
+                "outbound": "HttpSocks5-p02"
             },{
                 "source_ip_cidr": "192.168.202.0/24",
-                "server": "dns-WiFi-202"
+                "outbound": "WiFi-202"
             },{
                 "source_ip_cidr": "192.168.203.0/24",
-                "server": "dns-WiFi-203"
+                "outbound": "WiFi-203"
             },{
                 "clash_mode": "Direct",
-                "server": "dns-local"
+                "outbound": "直连"
             },{
                 "clash_mode": "Global",
-                "server": "dns-全局流量"
+                "outbound": "全局流量（全局模式可用）"
             },{
-                "type": "logical",
-                "mode": "and",
-                "rules": [{"rule_set": ["ipapis-site"]}, {"query_type": ["A", "AAAA"]}],
-                "server": "dns-fakeip",
-                "rewrite_ttl": 1
+                "rule_set": ["ipapis-site"],
+                "outbound": "IP地理位置"
             },{
-                "type": "logical",
-                "mode": "and",
-                "rules": [{"rule_set": ["ipapis-site"]}, {"query_type": ["A", "AAAA"], "invert": true}],
-                "server": "dns-IP地理位置"
+                "rule_set": ["monitor-site"],
+                "outbound": "Web监控"
             },{
-                "type": "logical",
-                "mode": "and",
-                "rules": [{"rule_set": ["monitor-site"]}, {"query_type": ["A", "AAAA"]}],
-                "server": "dns-fakeip",
-                "rewrite_ttl": 1
+                "rule_set": ["google-site", "google-ip", "google-official-ip"],
+                "outbound": "Google"
             },{
-                "type": "logical",
-                "mode": "and",
-                "rules": [{"rule_set": ["monitor-site"]}, {"query_type": ["A", "AAAA"], "invert": true}],
-                "server": "dns-Web监控"
+                "rule_set": ["microsoft-site", "microsoft-ip", "microsoft-official-ip"],
+                "outbound": "Microsoft"
             },{
-                "type": "logical",
-                "mode": "and",
-                "rules": [{"rule_set": ["google-site"]}, {"query_type": ["A", "AAAA"]}],
-                "server": "dns-fakeip",
-                "rewrite_ttl": 1
+                "rule_set": ["apple-site", "apple-ip", "apple-official-ip"],
+                "outbound": "Apple"
             },{
-                "type": "logical",
-                "mode": "and",
-                "rules": [{"rule_set": ["google-site"]}, {"query_type": ["A", "AAAA"], "invert": true}],
-                "server": "dns-google"
+                "rule_set": ["telegram-site", "telegram-ip"],
+                "outbound": "Telegram"
             },{
-                "type": "logical",
-                "mode": "and",
-                "rules": [{"rule_set": ["microsoft-site"]}, {"query_type": ["A", "AAAA"]}],
-                "server": "dns-fakeip",
-                "rewrite_ttl": 1
+                "rule_set": ["ai-site", "ai-ip", "openai-site"],
+                "outbound": "AI"
             },{
-                "type": "logical",
-                "mode": "and",
-                "rules": [{"rule_set": ["microsoft-site"]}, {"query_type": ["A", "AAAA"], "invert": true}],
-                "server": "dns-microsoft"
+                "rule_set": ["bitcoin-site"],
+                "outbound": "BitCoin"
             },{
-                "type": "logical",
-                "mode": "and",
-                "rules": [{"rule_set": ["apple-site"]}, {"query_type": ["A", "AAAA"]}],
-                "server": "dns-fakeip",
-                "rewrite_ttl": 1
+                "rule_set": ["meta-site"],
+                "outbound": "Meta"
             },{
-                "type": "logical",
-                "mode": "and",
-                "rules": [{"rule_set": ["apple-site"]}, {"query_type": ["A", "AAAA"], "invert": true}],
-                "server": "dns-apple"
+                "rule_set": ["twitter-site"],
+                "outbound": "Twitter"
             },{
-                "type": "logical",
-                "mode": "and",
-                "rules": [{"rule_set": ["telegram-site"]}, {"query_type": ["A", "AAAA"]}],
-                "server": "dns-fakeip",
-                "rewrite_ttl": 1
+                "rule_set": ["netflix-site"],
+                "outbound": "Netflix"
             },{
-                "type": "logical",
-                "mode": "and",
-                "rules": [{"rule_set": ["telegram-site"]}, {"query_type": ["A", "AAAA"], "invert": true}],
-                "server": "dns-telegram"
+                "rule_set": ["spotify-site"],
+                "outbound": "Spotify"
             },{
-                "type": "logical",
-                "mode": "and",
-                "rules": [{"rule_set": ["ai-site", "openai-site"]}, {"query_type": ["A", "AAAA"]}],
-                "server": "dns-fakeip",
-                "rewrite_ttl": 1
+                "rule_set": ["amazon-site"],
+                "outbound": "Amazon"
             },{
-                "type": "logical",
-                "mode": "and",
-                "rules": [{"rule_set": ["ai-site", "openai-site"]}, {"query_type": ["A", "AAAA"], "invert": true}],
-                "server": "dns-AI"
+                "rule_set": ["tiktok-site"],
+                "outbound": "Tiktok"
             },{
-                "type": "logical",
-                "mode": "and",
-                "rules": [{"rule_set": ["bitcoin-site"]}, {"query_type": ["A", "AAAA"]}],
-                "server": "dns-fakeip",
-                "rewrite_ttl": 1
+                "rule_set": ["cloudflare-site"],
+                "outbound": "Cloudflare"
             },{
-                "type": "logical",
-                "mode": "and",
-                "rules": [{"rule_set": ["bitcoin-site"]}, {"query_type": ["A", "AAAA"], "invert": true}],
-                "server": "dns-bitcoin"
+                "rule_set": ["proxy-custom-site", "proxy-custom-ip"],
+                "outbound": "海外大众流量"
             },{
-                "type": "logical",
-                "mode": "and",
-                "rules": [{"rule_set": ["meta-site"]}, {"query_type": ["A", "AAAA"]}],
-                "server": "dns-fakeip",
-                "rewrite_ttl": 1
-            },{
-                "type": "logical",
-                "mode": "and",
-                "rules": [{"rule_set": ["meta-site"]}, {"query_type": ["A", "AAAA"], "invert": true}],
-                "server": "dns-meta"
-            },{
-                "type": "logical",
-                "mode": "and",
-                "rules": [{"rule_set": ["twitter-site"]}, {"query_type": ["A", "AAAA"]}],
-                "server": "dns-fakeip",
-                "rewrite_ttl": 1
-            },{
-                "type": "logical",
-                "mode": "and",
-                "rules": [{"rule_set": ["twitter-site"]}, {"query_type": ["A", "AAAA"], "invert": true}],
-                "server": "dns-twitter"
-            },{
-                "type": "logical",
-                "mode": "and",
-                "rules": [{"rule_set": ["netflix-site"]}, {"query_type": ["A", "AAAA"]}],
-                "server": "dns-fakeip",
-                "rewrite_ttl": 1
-            },{
-                "type": "logical",
-                "mode": "and",
-                "rules": [{"rule_set": ["netflix-site"]}, {"query_type": ["A", "AAAA"], "invert": true}],
-                "server": "dns-netflix"
-            },{
-                "type": "logical",
-                "mode": "and",
-                "rules": [{"rule_set": ["spotify-site"]}, {"query_type": ["A", "AAAA"]}],
-                "server": "dns-fakeip",
-                "rewrite_ttl": 1
-            },{
-                "type": "logical",
-                "mode": "and",
-                "rules": [{"rule_set": ["spotify-site"]}, {"query_type": ["A", "AAAA"], "invert": true}],
-                "server": "dns-spotify"
-            },{
-                "type": "logical",
-                "mode": "and",
-                "rules": [{"rule_set": ["amazon-site"]}, {"query_type": ["A", "AAAA"]}],
-                "server": "dns-fakeip",
-                "rewrite_ttl": 1
-            },{
-                "type": "logical",
-                "mode": "and",
-                "rules": [{"rule_set": ["amazon-site"]}, {"query_type": ["A", "AAAA"], "invert": true}],
-                "server": "dns-amazon"
-            },{
-                "type": "logical",
-                "mode": "and",
-                "rules": [{"rule_set": ["tiktok-site"]}, {"query_type": ["A", "AAAA"]}],
-                "server": "dns-fakeip",
-                "rewrite_ttl": 1
-            },{
-                "type": "logical",
-                "mode": "and",
-                "rules": [{"rule_set": ["tiktok-site"]}, {"query_type": ["A", "AAAA"], "invert": true}],
-                "server": "dns-tiktok"
-            },{
-                "type": "logical",
-                "mode": "and",
-                "rules": [{"rule_set": ["cloudflare-site"]}, {"query_type": ["A", "AAAA"]}],
-                "server": "dns-fakeip",
-                "rewrite_ttl": 1
-            },{
-                "type": "logical",
-                "mode": "and",
-                "rules": [{"rule_set": ["cloudflare-site"]}, {"query_type": ["A", "AAAA"], "invert": true}],
-                "server": "dns-cloudflare"
-            },{
-                "type": "logical",
-                "mode": "and",
-                "rules": [{"rule_set": ["proxy-custom-site"]}, {"query_type": ["A", "AAAA"]}],
-                "server": "dns-fakeip",
-                "rewrite_ttl": 1
-            },{
-                "type": "logical",
-                "mode": "and",
-                "rules": [{"rule_set": ["proxy-custom-site"]}, {"query_type": ["A", "AAAA"], "invert": true}],
-                "server": "dns-海外大众流量"
-            },{
-                "type": "logical",
-                "mode": "and",
-                "rules": [{"rule_set": ["proxy-3rd-site"]}, {"query_type": ["A", "AAAA"]}],
-                "server": "dns-fakeip",
-                "rewrite_ttl": 1
-            },{
-                "type": "logical",
-                "mode": "and",
-                "rules": [{"rule_set": ["proxy-3rd-site"]}, {"query_type": ["A", "AAAA"], "invert": true}],
-                "server": "dns-海外非大众流量"
+                "rule_set": ["proxy-3rd-site", "proxy-3rd-ip"],
+                "outbound": "海外非大众流量"
             },{
                 "rule_set": ["cn-custom-site", "cn-3rd-site"],
-                "server": "dns-国内域名流量"
+                "outbound": "国内域名流量"
+            },{
+                "rule_set": ["cn-custom-ip", "cn-3rd-ip"],
+                "outbound": "国内IP流量"
             },{
                 "source_port_range": ["0:65535"],
-                "server": "dns-漏网之鱼"
+                "outbound": "漏网之鱼"
             }
         ]
     },
