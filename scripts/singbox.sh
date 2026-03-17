@@ -389,7 +389,8 @@ sing_box_config_load() {
 
     elif [ "$tag" = "in-hysteria2" ]; then
       global_hysteria2_port=$(jq -r ".inbounds[${i}].listen_port" "${global_box_home_path}"/config.json)
-      global_hysteria2_tls_sni=$(openssl x509 -in "${global_box_home_path}"/hysteria2.public.key -noout -subject -nameopt RFC2253 | awk -F'=' '{print $NF}')
+      #global_hysteria2_tls_sni=$(openssl x509 -in "${global_box_home_path}"/hysteria2.public.key -noout -subject -nameopt RFC2253 | awk -F'=' '{print $NF}')
+	  global_hysteria2_tls_sni=$(jq -r ".inbounds[${i}].tls.server_name" "${global_box_home_path}"/config.json)
       global_hysteria2_auth_password=$(jq -r ".inbounds[${i}].users[0].password" "${global_box_home_path}"/config.json)
       global_hysteria2_obfs_type=$(jq -r ".inbounds[${i}].obfs.type" "${global_box_home_path}"/config.json)
       if [ -n "$global_hysteria2_obfs_type" ]; then
