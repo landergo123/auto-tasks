@@ -504,7 +504,7 @@ ${inbounds_str}{
                 "type": "ws",
                 "path": "${global_vmess_ws_path}",
                 "headers": {
-                    "Host": ["wine-bars.shop"]
+                    
                 }
             }
         }
@@ -1272,7 +1272,7 @@ sing_box_config_show_box() {
             "type": "selector",
             "interrupt_exist_connections": true,
             "outbounds": ["节点选择", "out-vmess-ws", "out-hysteria2", "out-reality", "直连", "拒绝"],
-            "default": "拒绝"
+            "default": "节点选择"
         },{
             "tag": "国内域名流量",
             "type": "selector",
