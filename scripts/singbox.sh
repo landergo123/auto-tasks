@@ -423,33 +423,30 @@ sing_box_config_save() {
   if [ "$global_reality_enabled" = "Y" ]; then
     inbounds_str=$(cat <<EOF
 ${inbounds_str}{
-			"tag": "in-reality",
-			"type": "vless",
-			"listen": "::",
-			"listen_port": ${global_reality_port},
-                        "sniff": true,
-                        "sniff_timeout": "1s",
-			"domain_strategy": "ipv4_only",
-			"users": [{
-				"uuid": "${global_reality_auth_password}",
-				"flow": "xtls-rprx-vision"
-			}],
-			"tls": {
-				"enabled": true,
-				"server_name": "${global_reality_tls_sni}",
-				"reality": {
-					"enabled": true,
-					"handshake": {
-						"server": "${global_reality_tls_sni}",
-						"server_port": 443
-					},
-					"private_key": "${global_reality_tls_private_key}",
-					"short_id": [
-						"${global_reality_tls_random}"
-					]
-				}
-			}
-		}
+            "tag": "in-reality",
+            "type": "vless",
+            "listen": "::",
+            "listen_port": ${global_reality_port},
+            "users": [{
+                "uuid": "${global_reality_auth_password}",
+                "flow": "xtls-rprx-vision"
+            }],
+            "tls": {
+                "enabled": true,
+                "server_name": "${global_reality_tls_sni}",
+                "reality": {
+                    "enabled": true,
+                    "handshake": {
+                        "server": "${global_reality_tls_sni}",
+                        "server_port": 443
+                    },
+                    "private_key": "${global_reality_tls_private_key}",
+                    "short_id": [
+                        "${global_reality_tls_random}"
+                    ]
+                }
+            }
+        }
 EOF
 )
   fi
@@ -460,30 +457,31 @@ EOF
     fi
     inbounds_str=$(cat <<EOF
 ${inbounds_str}{
-			"tag": "in-hysteria2",
-			"type": "hysteria2",
-			"listen": "::",
-			"listen_port": ${global_hysteria2_port},
-                        "sniff": true,
-                        "sniff_timeout": "1s",
-			"domain_strategy": "ipv4_only",
-			"obfs": {
-				"type": "salamander",
-				"password": "${global_hysteria2_obfs_password}"
-			},
-			"users": [{
-				"password": "${global_hysteria2_auth_password}"
-			}],
-			"tls": {
-				"enabled": true,
-				"server_name": "${global_hysteria2_tls_sni}",
-				"certificate_path": "${global_hysteria2_tls_public_key_path}",
-				"key_path": "${global_hysteria2_tls_private_key_path}",
-				"alpn": [
-					"h3"
-				]
-			}
-		}
+            "tag": "in-hysteria2",
+            "type": "hysteria2",
+            "listen": "::",
+            "listen_port": ${global_hysteria2_port},
+            "obfs": {
+                "type": "salamander",
+                "password": "${global_hysteria2_obfs_password}"
+            },
+            "users": [{
+                "password": "${global_hysteria2_auth_password}"
+            }],
+            "tls": {
+                "enabled": true,
+                "server_name": "${global_hysteria2_tls_sni}",
+                "certificate_path": "${global_hysteria2_tls_public_key_path}",
+                "key_path": "${global_hysteria2_tls_private_key_path}",
+                "alpn": [
+                    "h3"
+                ]
+            },
+            "masquerade": {
+                "type": "string",
+                "status_code": 502
+            }
+        }
 EOF
 )
   fi
@@ -494,23 +492,22 @@ EOF
     fi
     inbounds_str=$(cat <<EOF
 ${inbounds_str}{
-			"tag": "in-vmess-ws",
-			"type": "vmess",
-			"listen": "::",
-			"listen_port": ${global_vmess_ws_port},
-                        "sniff": true,
-                        "sniff_timeout": "1s",
-			"domain_strategy": "ipv4_only",
-			"users": [{
-				"uuid": "${global_vmess_ws_auth_password}",
-				"alterId": 0
-			}],
-			"transport": {
-				"type": "ws",
-				"path": "${global_vmess_ws_path}",
-				"headers": {}
-			}
-		}
+            "tag": "in-vmess-ws",
+            "type": "vmess",
+            "listen": "::",
+            "listen_port": ${global_vmess_ws_port},
+            "users": [{
+                "uuid": "${global_vmess_ws_auth_password}",
+                "alterId": 0
+            }],
+            "transport": {
+                "type": "ws",
+                "path": "${global_vmess_ws_path}",
+                "headers": {
+                    "Host": ["wine-bars.shop"]
+                }
+            }
+        }
 EOF
 )
   fi
@@ -985,7 +982,7 @@ sing_box_config_show_box() {
             "strict_route": true,
             "auto_redirect": false,
             "stack": "system",
-            "mtu": 9000,
+            "mtu": 1420,
             "address": ["172.19.0.1/30"]
         },{
             "tag": "in-httpsocks5-cn",
