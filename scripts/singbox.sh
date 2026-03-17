@@ -462,6 +462,8 @@ ${inbounds_str}{
             "type": "hysteria2",
             "listen": "::",
             "listen_port": ${global_hysteria2_port},
+            "up_mbps": 100,
+            "down_mbps": 100,
             "obfs": {
                 "type": "salamander",
                 "password": "${global_hysteria2_obfs_password}"
