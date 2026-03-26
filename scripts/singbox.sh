@@ -411,8 +411,8 @@ sing_box_config_load() {
         global_vmess_ws_port=443
       fi
     else
-      print_message "无法识别的客户端连接信息"
-      exit_now 1
+      print_message "无法识别的客户端连接信息:$tag"
+      #exit_now 1
     fi
     i=$((i + 1))
   done
