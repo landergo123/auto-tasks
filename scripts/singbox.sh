@@ -402,7 +402,7 @@ sing_box_config_load() {
     elif [ "$tag" = "in-hysteria2" ]; then
       global_hysteria2_port=$(jq -r ".inbounds[${i}].listen_port" "${global_box_home_path}"/config.json)
       #global_hysteria2_tls_sni=$(openssl x509 -in "${global_box_home_path}"/hysteria2.public.key -noout -subject -nameopt RFC2253 | awk -F'=' '{print $NF}')
-	  global_hysteria2_tls_sni=$(jq -r ".inbounds[${i}].tls.server_name" "${global_box_home_path}"/config.json)
+      global_hysteria2_tls_sni=$(jq -r ".inbounds[${i}].tls.server_name" "${global_box_home_path}"/config.json)
       global_hysteria2_auth_password=$(jq -r ".inbounds[${i}].users[0].password" "${global_box_home_path}"/config.json)
       global_hysteria2_obfs_type=$(jq -r ".inbounds[${i}].obfs.type" "${global_box_home_path}"/config.json)
       if [ -n "$global_hysteria2_obfs_type" ]; then
@@ -2562,22 +2562,31 @@ option_for_install(){
     sudo systemctl restart sing-box
 
     if command_exists crontab; then
+      CRON_CHANGE="N"
+      TMP_CRON="/tmp/cron_tmp_333"
+      crontab -l 2>/dev/null > $TMP_CRON
+
       if crontab -l | grep -q "sing-box.log"; then
         print_message "定时任务【滚动日志】已存在，无需添加"
       else
-        (crontab -l 2>/dev/null; echo "0 6 * * * cat /dev/null >${global_box_log_path}/sing-box.log") | crontab -
-        systemctl restart cron
-		print_message "定时任务【滚动日志】已添加：每天6点执行 cat /dev/null >${global_box_log_path}/sing-box.log"
+        echo "0 6 * * * cat /dev/null > ${global_box_log_path}/sing-box.log" >> $TMP_CRON
+        CRON_CHANGE="Y"
+        print_message "定时任务【滚动日志】已添加：每天6点执行 cat /dev/null >${global_box_log_path}/sing-box.log"
       fi
 
       if crontab -l | grep -q "reboot"; then
         print_message "定时任务【定期重启】已存在，无需添加"
       else
-        (crontab -l 2>/dev/null; echo "0 7 * * * /bin/sync && /bin/sleep 5 && (/sbin/reboot 2>/dev/null || /sbin/shutdown -r now 2>/dev/null)") | crontab -
-        systemctl restart cron
-		print_message "定时任务【定期重启】已添加：每天7点执行 /bin/sync && /bin/sleep 5 && (/sbin/reboot 2>/dev/null || /sbin/shutdown -r now 2>/dev/null)"
+        echo "0 7 * * * /bin/sync && /bin/sleep 5 && (/sbin/reboot 2>/dev/null || /sbin/shutdown -r now 2>/dev/null)" >> $TMP_CRON
+        CRON_CHANGE="Y"
+        print_message "定时任务【定期重启】已添加：每天7点执行 /bin/sync && /bin/sleep 5 && (/sbin/reboot 2>/dev/null || /sbin/shutdown -r now 2>/dev/null)"
       fi
-
+      
+      if [ "$CRON_CHANGE" = "Y" ]; then
+        crontab $TMP_CRON
+        systemctl restart cron
+      fi
+      rm -f $TMP_CRON
     fi
 
   else
