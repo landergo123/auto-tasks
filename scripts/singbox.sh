@@ -37,6 +37,11 @@ global_vmess_ws_auth_user=
 global_vmess_ws_auth_password=
 global_vmess_ws_path=
 
+global_shadowsocks_enabled=
+global_shadowsocks_port=
+global_shadowsocks_password=
+global_shadowsocks_method="2022-blake3-aes-128-gcm"
+
 global_code_failure=50
 global_code_param_missing=11
 global_code_param_invalid=12
@@ -45,7 +50,7 @@ global_code_not_found=44
 
 readonly DEFAULT_CF_ENABLED="N"
 #readonly DEFAULT_BOX_VERSION="1.10.7"
-readonly DEFAULT_BOX_VERSION="1.12.16"
+readonly DEFAULT_BOX_VERSION="1.12.25"
 readonly DEFAULT_REALITY_ENABLED="Y"
 readonly DEFAULT_REALITY_PORT=5443
 readonly DEFAULT_REALITY_SNI="itunes.apple.com"
@@ -55,6 +60,8 @@ readonly DEFAULT_HYSTERIA2_DOMAIN="bing.com"
 readonly DEFAULT_VMESS_ENABLED="Y"
 readonly DEFAULT_VMESS_PORT=7443
 readonly DEFAULT_VMESS_WS_PATH="/im/msg"
+readonly DEFAULT_SHADOWSOCKS_ENABLED="Y"
+readonly DEFAULT_SHADOWSOCKS_PORT=8080
 readonly DEFAULT_CF_VERSION="N"
 
 print_message(){
@@ -366,6 +373,11 @@ sing_box_config_init() {
     print_message "正在生成 Vmess协议 配置参数 ..."
     global_vmess_ws_auth_password=$("${global_box_home_path}"/sing-box generate uuid)
   fi
+
+  if [ "$global_shadowsocks_enabled" = "Y" ]; then
+    print_message "正在生成 Shadowsocks协议 配置参数 ..."
+    global_shadowsocks_password=$("${global_box_home_path}"/sing-box generate rand --base64 16)
+  fi
 }
 
 sing_box_config_load() {
@@ -410,6 +422,12 @@ sing_box_config_load() {
       else
         global_vmess_ws_port=443
       fi
+
+    elif [ "$tag" = "in-ss" ]; then
+      global_shadowsocks_port=$(jq -r ".inbounds[${i}].listen_port" "${global_box_home_path}"/config.json)
+      global_shadowsocks_password=$(jq -r ".inbounds[${i}].password" "${global_box_home_path}"/config.json)
+      global_shadowsocks_method=$(jq -r ".inbounds[${i}].method" "${global_box_home_path}"/config.json)
+
     else
       print_message "无法识别的客户端连接信息:$tag"
       #exit_now 1
@@ -510,6 +528,26 @@ ${inbounds_str}{
                     
                 }
             }
+        }
+EOF
+)
+  fi
+
+  if [ "$global_shadowsocks_enabled" = "Y" ]; then
+    if [ -n "$inbounds_str" ]; then
+      inbounds_str="${inbounds_str}, "
+    fi
+    inbounds_str=$(cat <<EOF
+${inbounds_str}{
+            "tag": "in-ss",
+            "type": "shadowsocks",
+            "listen": "::",
+            "listen_port": ${global_shadowsocks_port},
+            "method": "${global_shadowsocks_method}",
+            "password": "${global_shadowsocks_password}",
+            "users": [],
+            "managed": false,
+            "multiplex": {}
         }
 EOF
 )
@@ -1052,6 +1090,15 @@ sing_box_config_show_box() {
                 ]
             }
         },{
+            "tag": "out-ss-iplc",
+            "type": "shadowsocks",
+            "detour": "专线选择",
+            "server": "$ip",
+            "server_port": ${global_shadowsocks_port},
+            "method": "${global_shadowsocks_method}",
+            "password": "${global_shadowsocks_password}",
+            "multiplex": {}
+        },{
             "tag": "out-reality",
             "type": "vless",
             "server": "${ip}",
@@ -1116,6 +1163,14 @@ sing_box_config_show_box() {
                     "Host": ["$argo"]
                 }
             }
+        },{
+            "tag": "out-ss",
+            "type": "shadowsocks",
+            "server": "$ip",
+            "server_port": ${global_shadowsocks_port},
+            "method": "${global_shadowsocks_method}",
+            "password": "${global_shadowsocks_password}",
+            "multiplex": {}
         },{
             "tag": "直连",
             "type": "direct"
@@ -2288,6 +2343,14 @@ sing_box_config_show_base() {
   #{"add":"speed.cloudflare.com","aid":"0","host":"'$argo'","id":"'$global_vmess_uuid'","net":"ws","path":"'$ws_path'","port":"80","ps":"sing-box-vmess","tls":"","type":"none","v":"2"}
   print_message 'vmess://'$(echo '{"add":"'$argo'","aid":"0","host":"'$argo'","id":"'$global_vmess_ws_auth_password'","net":"ws","path":"'$global_vmess_ws_path'","port":"'${global_vmess_ws_port}'","ps":"singbox-vmws-'${ip##*.}'","scy":"auto","tls":"tls","type":"none","v":"2"}' | base64 -w 0)
   print_message ""
+
+  print_message "+-----------------------------------------------------------------------------+"
+  print_message "| Shadowsocks 客户端连接配置：                                                  |"
+  print_message "+-----------------------------------------------------------------------------+"
+  # base64(aes-128-gcm:aecbeb41-383a-4895-b6ff-9c5391ef360a)
+  ss_auth_temp=$(echo "${global_shadowsocks_method}:${global_shadowsocks_password}" | base64 -w 0)
+  print_message "ss://${ss_auth_temp}@$ip:$global_shadowsocks_port#singbox-ss-${ip##*.}"
+  print_message ""
 }
 
 sing_box_config_show() {
@@ -2296,7 +2359,7 @@ sing_box_config_show() {
   argo="$ip"
   sing_box_config_show_base
   sing_box_config_show_box
-  sing_box_config_show_clash
+  #sing_box_config_show_clash
 }
 
 option_for_show_config(){
@@ -2460,10 +2523,41 @@ option_for_install(){
       fi
     fi
 
+    if [ "$global_shadowsocks_enabled" = "" ]; then
+      printf "是否开启 Shadowsocks 协议【默认=${DEFAULT_SHADOWSOCKS_ENABLED}；Y=是，N=否】，请输入【Y/N】："
+      read -r text
+      if [ "$text" = "" ]; then
+        global_shadowsocks_enabled=${DEFAULT_SHADOWSOCKS_ENABLED}
+        continue
+      elif [ "$text" = "Y" -o "$text" = "y" ]; then
+        global_shadowsocks_enabled="Y"
+        continue
+      elif [ "$text" = "N" -o "$text" = "n" ]; then
+        global_shadowsocks_enabled="N"
+        continue
+      else
+        continue
+      fi
+    fi
+
+    if [ "$global_shadowsocks_port" = "" ]; then
+      printf "设置 Shadowsocks协议 端口号（默认：${DEFAULT_SHADOWSOCKS_PORT}），请输入【80~65535】："
+      read -r text
+      if [ -z "$text" ]; then
+        global_shadowsocks_port="${DEFAULT_SHADOWSOCKS_PORT}"
+        continue
+      elif is_port $text; then
+        global_shadowsocks_port="$text"
+        continue
+      else
+        continue
+      fi
+    fi
+
     break
   done
 
-  if [ "$global_reality_enabled" = "Y" -o "$global_hysteria2_enabled" = "Y" -o "$global_vmess_ws_enabled" = "Y" ]; then
+  if [ "$global_reality_enabled" = "Y" -o "$global_hysteria2_enabled" = "Y" -o "$global_vmess_ws_enabled" = "Y" -o "$global_shadowsocks_enabled" = "Y" ]; then
     sing_box_install
     sudo systemctl restart sing-box
 
@@ -2513,6 +2607,12 @@ params_unset_padding_default(){
   if [ -z "$global_vmess_ws_path" ]; then
     global_vmess_ws_path="${DEFAULT_VMESS_WS_PATH}"
   fi
+  if [ -z "$global_shadowsocks_enabled" ]; then
+    global_shadowsocks_enabled="${DEFAULT_SHADOWSOCKS_ENABLED}"
+  fi
+  if [ -z "$global_shadowsocks_port" ]; then
+    global_shadowsocks_port="${DEFAULT_SHADOWSOCKS_PORT}"
+  fi
   if [ -z "$global_cf_enabled" ]; then
     global_cf_enabled="${DEFAULT_CF_VERSION}"
   fi
@@ -2520,9 +2620,9 @@ params_unset_padding_default(){
 
 
 # 主流程 --------开始-------------------------------
-# install /opt/softs 1.10.7 Y 5443 itunes.apple.com Y 6443 bing.com Y 7443 /im/msg
+# install /opt/softs 1.12.25 Y 5443 itunes.apple.com Y 6443 bing.com Y 7443 /im/msg Y 8080
 # cloudflared
-# 操作编码 -> Singbox 版本号(默认1.10.7：latest最新) -> Reality (是否开启、端口、伪装域名)-> Hysteria2（是否开启、端口、证书域名）-> vmess（是否开启、端口、WS路径） -> -> -> -> -> -> -> ->
+# 操作编码 -> Singbox 版本号(默认1.12.25：latest最新) -> Reality (是否开启、端口、伪装域名)-> Hysteria2（是否开启、端口、证书域名）-> vmess（是否开启、端口、WS路径） -> -> -> -> -> -> -> ->
 option="$1"
 install_path="$2"
 global_box_version="$3"
@@ -2535,7 +2635,9 @@ global_hysteria2_tls_sni="$9"
 global_vmess_ws_enabled="${10}"
 global_vmess_ws_port="${11}"
 global_vmess_ws_path="${12}"
-global_cf_enabled="${13}"
+global_shadowsocks_enabled="${13}"
+global_shadowsocks_port="${14}"
+global_cf_enabled="${15}"
 #if [ "$install_path" = "" ]; then
   #print_message "请指定sing-box安装的目录，比如 /opt/softs"
   #exit_now $global_code_failure

@@ -5,6 +5,17 @@
 #set -x
 #trap 'echo -e "\n[ERROR] 在 ${BASH_SOURCE[0]} 第 $LINENO 行失败，退出码 $?\n调用栈:\n${BASH_LINENO[*]}" >&2' ERR
 
+# 确保脚本以 root 权限运行 (兼容 sh)
+if [ "$(id -u)" -ne 0 ]; then
+  echo "错误：请使用 root 用户或 sudo 权限运行此脚本。"
+  exit 1
+fi
+
+#PATH=$PATH:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+#SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
+#SCRIPT_PATH="$SCRIPT_DIR/$(basename "$0")"
+#SHELL_HOME_PATH="$SCRIPT_DIR"
+
 #sed "s/\${xxxxx}/$my_var/g" template.txt > output.txt
 curr_script_path=$(readlink -f "$0")
 curr_script_path=$(dirname "$curr_script_path")
@@ -498,6 +509,7 @@ show_help(){
 
 
 # 主流程 ---- 开始 ----------------------------------------------------------
+
 print_message "设置当前脚本工作目录：${global_work_home_path}"
 if ! package_exists curl; then
   package_install "curl"
@@ -557,6 +569,18 @@ while true; do
   print_message "**********************************************************************"
   print_message "* 查看singbox配置 | singbox showconfig                               *"
   print_message "**********************************************************************"
+  print_message ""
+  print_message ""
+  print_message "示  例："
+  print_message "----------------------------------------------------------------------"
+  print_message "set_os_locale Asia/Tokyo en_US.utf8"
+  print_message "enable_bbr"
+  print_message "optimize_network"
+  print_message "docker_install latest"
+  print_message "singbox install /opt/softs 1.12.25 Y 5443 itunes.apple.com Y 6443 bing.com Y 7443 /im/msg Y 8080"
+  print_message "nginx_install 1.28-alpine /opt/softs nginx-quic Asia/Tokyo"
+  print_message "ok"
+  print_message "----------------------------------------------------------------------"
   print_message ""
   print_message "输入你要执行的任务序列（顺序执行），每行代表一个任务。"
   print_message "输入ok(确认)，reset(重置)，exit(退出)，help(帮助)，请输入："

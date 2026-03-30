@@ -212,6 +212,409 @@ http {
     include /etc/nginx/sites/*.conf;
 }
 EOF
+
+  cat << EOF > "${global_nginx_home_path}"/conf/nginx_sni.conf.bak
+# stream模块 监听 TCP 443 和 UDP 443，根据SNI分流，不解析协议内容（reality域名获取【https://myip.ms/xxx.xxx.xxx.xxx】，hysteria2域名获取【】）
+# 原理（根据SNI分流）：1.监听443端口，2.根据协议类型分流（UDP【hysteria2】 & TCP【reality & web】），然后根据SNI区分TCP不同服务【reality & web】。
+# 		1. UDP：只有 hysteria2 一种服务, 不用管SNI分流，但是需要域名Web支持http3（如果是自己的域名，可以托管到Cloudflare即可，如果是别人的域名，支持HTTP3 + TLS1.3 + X25519即可） 
+# 		2. TCP: 区分 reality 和 web 服务，如果偷自己的域名则配置自己的域名（比如oss.xxxxx.com），如果偷别人域名的证书，则配置别人的域名（比如itunes.apple.com）
+# docker镜像：			nginx:1.28-alpine
+# docker容器：			docker run -d --user root --name nginx-quic --restart unless-stopped --network host -e TZ=Asia/Tokyo -v /opt/softs/nginx-quic/html:/usr/share/nginx/html -v /opt/softs/nginx-quic/conf:/etc/nginx -v /opt/softs/nginx-quic/certbot:/etc/letsencrypt nginx:1.28-alpine
+# SSL证书：				WEB服务（CDN加速）使用Cloudflare证书，其他服务使用letsencrypt证书（HTTP方式）
+# curl测试HTTP3：        apt install -y snapd && snap install curl && /snap/bin/curl -vk --http3-only  https://127.0.0.1:9443
+# 监听UDP端口测试：		nc -ul 0.0.0.0 443
+# 客户端测试UDP端口：		echo "test" | nc -u x.x.x.x 443
+# 端口监听状态查询：		ss -lnp | grep 443
+#
+#========global====================================================================================
+#user                                nobody nobody;
+worker_processes                     auto;
+worker_cpu_affinity                  auto;
+worker_rlimit_nofile                 65535;
+
+# [ debug | info | notice | warn | error | crit ] 
+error_log                            /var/log/nginx/error.log notice;
+pid                                  /var/run/nginx.pid;
+
+#========events====================================================================================
+events {
+    use                              epoll;
+    # count per work processer
+    worker_connections               65535;
+    #accept_mutex                    on;
+    multi_accept                     on;
+}
+
+stream {
+    #log_format sni_log '----- [$time_iso8601][$remote_addr] $protocol SNI="$ssl_preread_server_name" '
+    #                   'upstream=$upstream_addr status=$status time=$session_time';
+    #access_log /dev/stdout sni_log;
+
+    map $ssl_preread_server_name $backend_name {
+        # cloudflare cdn & vmess websocket
+        oss.xxxxx.com reality_backend;
+        #~*(xxxxx\.com)$ web_backend_2;
+        default web_backend;
+    }
+
+    upstream reality_backend {
+        server 127.0.0.1:5443;
+    }
+
+    upstream hysteria2_backend {
+        server 127.0.0.1:6443;
+    }
+
+    upstream web_backend {
+        server 127.0.0.1:9443;
+    }
+
+    #upstream web_backend_2 {
+    #    server 127.0.0.1:10443;
+    #}
+
+    server {
+        listen 443;
+        #listen [::]:443;
+
+        ssl_preread    on;
+        #proxy_protocol on;
+        proxy_pass     $backend_name;
+    }
+
+    server {
+        listen 443 udp reuseport;
+        #listen [::]:443 udp reuseport;
+
+        proxy_pass    hysteria2_backend;
+        #proxy_pass    web_backend;
+        proxy_timeout 30s;
+    }
+}
+
+http {
+    include                          mime.types;
+    default_type                     application/octet-stream;
+
+    # TODO : zoro copy setting
+    #####################################################################
+    #                       #  sendfile  #  tcp_nopush  #  tcp_nodelay  #
+    #####################################################################
+    # API                   #     off    #      off     #      on       #
+    # Small files (static)  #     on     #      off     #      on       #
+    # Big files (static)    #     on     #      on      #      off      #
+    #####################################################################
+    sendfile                         off;
+    tcp_nopush                       off;
+    tcp_nodelay                      on;
+    sendfile_max_chunk               128k;
+    #send_lowat                      12000;
+
+    # client setting
+    # buffers setting, get memery pagesize command: [getconf PAGESIZE]
+    client_header_buffer_size        4k;
+    large_client_header_buffers      4 8k;
+    client_body_buffer_size          64k;
+    # TODO : if uploading a large file, please set a larger value separately.
+    client_max_body_size             10m;
+    client_body_in_single_buffer     on;
+    #client_body_temp_path           /path/to/tmp/client_body_temp;
+
+    # proxy setting
+    proxy_buffering                  on;
+    proxy_buffer_size                4k;
+    proxy_buffers                    64 8k;
+    #proxy_temp_path                 /path/to/tmp/proxy_temp;
+    #proxy_max_temp_file_size        512k;
+    #proxy_temp_file_write_size      64k;
+    #proxy_cache_path                /path/to/tmp/proxy_cache levels=1:2 keys_zone=cache_one:512m inactive=1d max_size=2g;
+
+    # keepalive setting
+    keepalive_timeout                30s;
+    keepalive_requests               100;
+
+    # timeout setting
+    client_header_timeout            5s;
+    # TODO : if uploading a large file, please set a larger value separately.
+    client_body_timeout              5s;
+    send_timeout                     5s;
+    proxy_connect_timeout            10s;
+    proxy_send_timeout               10s;
+    proxy_read_timeout               10s;
+    # delayed shutdown enabled: on, off, always
+    lingering_close                  on;
+    lingering_time                   10s;
+    lingering_timeout                5s;
+    reset_timedout_connection        on;
+
+    # mod_gzip configurations
+    gzip                             on;
+    gzip_comp_level                  6;
+    gzip_min_length                  1k;
+    gzip_vary                        on;
+    gzip_proxied                     any;
+    #gzip_http_version               1.1;
+    #gzip_disable                    msie6;
+    gzip_buffers                     8 16k;
+    gzip_types                       text/plain text/xml text/css text/javascript application/json application/javascript application/x-javascript application/xml application/rss+xml application/xhtml+xml font/ttf font/otf image/svg+xml;
+
+    # -------------------------------------------------------------------------------
+    # pre gzip
+    # 
+    # docker exec -it nginx sh
+    # cd /usr/share/nginx/html
+    #
+    # find . -type f \
+    #   ! -name "*.gz" \
+    #   \( -name "*.js" -o -name "*.css" -o -name "*.html" -o -name "*.svg" -o -name "*.json" \) \
+    #   -exec gzip -k -9 {} \;
+    # -------------------------------------------------------------------------------
+    # find . -type f \
+    #   ! -name "*.gz" \
+    #   \( -name "*.js" -o -name "*.css" -o -name "*.html" -o -name "*.svg" -o -name "*.json" \) \
+    #   -exec gzip -f -k -9 {} \;
+    # -------------------------------------------------------------------------------
+    gzip_static                      on;
+
+    # open_file_cache--------------------
+    open_file_cache                  max=1000 inactive=20s;
+    open_file_cache_valid            30s;
+    open_file_cache_min_uses         2;
+    open_file_cache_errors           on;
+
+    # limit setting: fight DDoS attack, tune the numbers below according your application!!!
+    # usage 1: limit rate/qps, define a limit zone rule: key=$binary_remote_addr, name=qps_limit_per_ip, memerysize=10m, speed=50 per second
+    #limit_req_zone                   $binary_remote_addr zone=qps_limit_per_ip:10m rate=100r/s;
+    # apply a limit zone rule: use qps_limit_per_ip rule, allow burst=10 requests into queue
+    #limit_req                        zone=qps_limit_per_ip burst=10;
+    # usage 2: limit concurrent connection, define a limit zone: key=binary_remote_addr, name=conn_limit_per_ip, memerysize=10m
+    #limit_conn_zone                  $binary_remote_addr zone=conn_limit_per_ip:10m;
+    #limit_conn                       conn_limit_per_ip 100;
+
+    # optimize cache
+    #open_file_cache                 max=10000 inactive=20s;
+    #open_file_cache_valid           30s;
+    #open_file_cache_min_uses        2;
+    #open_file_cache_errors          on;
+    
+    # others setting
+    server_tokens                    off;
+    autoindex                        off;
+    #log_not_found                   off;
+    #server_names_hash_max_size      2048;
+    #server_names_hash_bucket_size   128;
+
+    # access log setting
+    log_format                       access '[$time_iso8601][$remote_addr]'
+                                        '[status=$status][$bytes_sent][$request_time][$upstream_response_time][$http_origin][$var_cors_origin][$var_connection_header][$server_port $request_method $scheme:/$request_uri]';
+    
+    #access_log                      /var/log/nginx/access.log access;
+    access_log                       /dev/null access;
+    
+    #include /etc/nginx/conf.d/*.conf;
+    
+    # Separate the following into independent configurations and import them through include
+    #========default.conf==========================================================================
+
+    ## client real ip, check module command: nginx -V 2>&1 | grep --color -o with-http_realip_module
+    ## 1. Trust all possible CDN nodes (Cloudflare is listed here; please add other CDNs if available).
+    #set_real_ip_from x.x.x.x/22;
+    ## ..............
+    #set_real_ip_from xxxx:xxxx::/32;
+    ## 2. Specify a header containing the real IP address
+    ## X-Forwarded-For is universal; almost all CDNs (CF-Connecting-IP is Cloudflare-specific) send X-Forwarded-For, and it supports multi-tiered CDN hybrid systems.
+    #real_ip_header X-Forwarded-For;
+    ## 3. Enable recursive DNS resolution: If multiple proxies are involved, enable recursive DNS resolution, and search for the first non-whitelisted IP address from the end to the beginning as the real IP address.
+    #real_ip_recursive on;
+    ## include /etc/nginx/conf.d/nginx_client_real_ip.conf;
+
+    map $http_upgrade $var_connection_header {
+        default "";
+        "~.+$" "upgrade";
+        #condition2 value;
+    }
+
+    # TODO : Example configuration of cors, xxxxx.com (1/4)
+    map $http_origin $var_cors_origin {
+        default "";
+        "~^http[s]?://(.+\.)?(xxxxx\.cn|xxxxx\.com)$" $http_origin;
+        #"~^http[s]?://(.+\.)?xxxxx\.cn$" $http_origin;
+    }
+
+    #map $uri $file_type {
+    #    ~*\.(html|htm)$ html;
+    #    ~*\.(css|js|eot|ttf|woff|woff2)$ common;
+    #    ~*\.(png|jpg|jpeg|gif|webp|svg|ico)$ img;
+    #    default other;
+    #}
+    
+    # https://www.alibabacloud.com/help/zh/cdn/user-guide/set-the-nginx-cache-policy
+    #map $sent_http_content_type $cache_control {
+    #    text/html                "private, no-cache, must-revalidate";
+    #    text/css                 "public, max-age=2592000";
+    #    application/javascript   "public, max-age=2592000";
+    #    ~^image/                 "public, max-age=31536003, immutable";
+    #    ~^font/                  "public, max-age=31536003, immutable";
+    #    ~^audio/                 "public, max-age=2592000";
+    #    ~^video/                 "public, max-age=2592000";
+    #    default                  "no-cache";
+    #}
+    #include /etc/nginx/conf.d/*.conf;
+    #include /etc/nginx/sites/*.conf;
+
+    upstream backend_vmess_websocket {
+        ip_hash;
+        server                       127.0.0.1:7443 weight=200 max_fails=1 fail_timeout=10s;
+        keepalive                    100;
+        #keepalived_requests         100;
+        keepalive_timeout            60s;
+    }
+    
+    # default 
+    #server {
+    #    listen 80 default_server;
+    #    server_name _;
+    #    return 444;
+    #}
+
+    # default 
+    #server {
+    #    listen 443 ssl default_server;
+    #    server_name _;
+    #    ssl_reject_handshake on;
+    #}
+    
+    server {
+        listen                       80;
+        #listen                      [::]:80;
+        #server_name                 xxx.com www.xxx.com;
+        #return                       301 https://$host$request_uri;
+
+        # use cloudflare ssl cert
+        #certbot cert [Suitable for HTTP-01, but not suitable for DNS-01.]
+        #certbot automatically creates a one-time temporary directory named .well-known and verification files, so these paths need to be publicly accessible.
+        location /.well-known/acme-challenge/ {
+            root                     /usr/share/nginx/html/xxxxx.com;
+        }
+
+        location / {
+            return                   301 https://$host$request_uri;
+        }
+    }
+
+    server {
+        listen                       127.0.0.1:9443 quic reuseport;
+        #listen                      127.0.0.1:9443 ssl proxy_protocol reuseport;
+        listen                       127.0.0.1:9443 ssl reuseport;
+        http2                        on;
+
+        set_real_ip_from             127.0.0.1;
+        # TODO UDP ???
+        real_ip_header               proxy_protocol;
+
+        # SSL setting
+        ssl_certificate              /etc/letsencrypt/live/xxxxx.com/fullchain.pem;
+        ssl_certificate_key          /etc/letsencrypt/live/xxxxx.com/privkey.pem;
+
+        ssl_protocols                TLSv1.2 TLSv1.3;
+        ssl_early_data               on;
+        ssl_session_cache            shared:SSL:10m;
+        ssl_session_timeout          10m;
+        ssl_session_tickets          off;
+        #ssl_ciphers                 ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-ECDSA-CHACHA20-POLY1305;
+        #ssl_ecdh_curve              secp521r1:secp384r1:secp256r1:x25519;
+        ssl_ciphers                  ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES256-GCM-SHA384;
+        ssl_ecdh_curve               X25519:prime256v1:secp384r1:secp521r1;
+        #ssl_prefer_server_ciphers    on;
+        root                         /usr/share/nginx/html/xxxxx.com;
+
+        # HTTP/3.
+        add_header Strict-Transport-Security "max-age=31536000; includeSubDomains; preload" always;
+        # Add Alt-Svc header to negotiate HTTP/3.
+        add_header alt-svc 'h3=":443"; ma=86400';
+        # Sent when QUIC was used
+        add_header QUIC-Status $http3;
+
+        # vmess
+        location /im/msg {
+            proxy_redirect                       off;
+            proxy_http_version                   1.1;
+            proxy_set_header                     Host $host;
+            proxy_set_header                     X-Real-IP $remote_addr;
+            proxy_set_header                     X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header                     Upgrade $http_upgrade;
+            proxy_set_header                     Connection $var_connection_header;
+            proxy_pass                           http://backend_vmess_websocket;
+        }
+
+        location /my-web-demo {
+            proxy_set_header   X-Real-IP $remote_addr;
+            proxy_set_header   X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header   Host $host;
+            proxy_pass         http://127.0.0.1:3001;
+            proxy_http_version 1.1;
+            proxy_set_header   Upgrade $http_upgrade;
+            proxy_set_header   Connection "upgrade";
+        }
+
+        # default routing: (only go to one location)
+        # html: always check for changes.
+        # css/js use a different URL after each change.(version or hash)
+        location = / {
+            index                                index.html index.htm;
+        }
+        location / {
+            try_files                            $uri =404;
+        }
+    }
+
+    #server {
+    #    listen                       127.0.0.1:10443 quic reuseport;
+    #    #listen                      127.0.0.1:10443 ssl proxy_protocol reuseport;
+    #    listen                       127.0.0.1:10443 ssl reuseport;
+    #    http2                        on;
+
+    #    set_real_ip_from             127.0.0.1;
+    #    # TODO UDP ???
+    #    real_ip_header               proxy_protocol;
+
+    #    # SSL setting
+    #    ssl_certificate              /etc/letsencrypt/live/xxxxx.com/fullchain.pem;
+    #    ssl_certificate_key          /etc/letsencrypt/live/xxxxx.com/privkey.pem;
+
+    #    ssl_protocols                TLSv1.2 TLSv1.3;
+    #    ssl_early_data               on;
+    #    ssl_session_cache            shared:SSL:10m;
+    #    ssl_session_timeout          10m;
+    #    ssl_session_tickets          off;
+    #    #ssl_ciphers                 ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-ECDSA-CHACHA20-POLY1305;
+    #    #ssl_ecdh_curve              secp521r1:secp384r1:secp256r1:x25519;
+    #    ssl_ciphers                  ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES256-GCM-SHA384;
+    #    ssl_ecdh_curve               X25519:prime256v1:secp384r1:secp521r1;
+    #    #ssl_prefer_server_ciphers    on;
+    #    root                         /usr/share/nginx/html/xxxxx.com;
+
+    #    # HTTP/3.
+    #    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains; preload" always;
+    #    # Add Alt-Svc header to negotiate HTTP/3.
+    #    add_header alt-svc 'h3=":443"; ma=86400';
+    #    # Sent when QUIC was used
+    #    add_header QUIC-Status $http3;
+
+    #
+    #    # default routing: (only go to one location)
+    #    # html: always check for changes.
+    #    # css/js use a different URL after each change.(version or hash)
+    #    location = / {
+    #        index                                index.html index.htm;
+    #    }
+    #    location / {
+    #        try_files                            $uri =404;
+    #    }
+    #}
+
+}
+EOF
 }
 
 nginx_config_vmess_websocket(){
