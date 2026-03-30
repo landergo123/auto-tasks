@@ -2565,10 +2565,19 @@ option_for_install(){
       if crontab -l | grep -q "sing-box.log"; then
         print_message "定时任务【滚动日志】已存在，无需添加"
       else
-        (crontab -l 2>/dev/null; echo "0 15 * * * cat /dev/null >${global_box_log_path}/sing-box.log") | crontab -
+        (crontab -l 2>/dev/null; echo "0 6 * * * cat /dev/null >${global_box_log_path}/sing-box.log") | crontab -
         systemctl restart cron
-		print_message "定时任务【滚动日志】已添加：每天15点执行 cat /dev/null >${global_box_log_path}/sing-box.log"
+		print_message "定时任务【滚动日志】已添加：每天6点执行 cat /dev/null >${global_box_log_path}/sing-box.log"
       fi
+
+      if crontab -l | grep -q "reboot"; then
+        print_message "定时任务【定期重启】已存在，无需添加"
+      else
+        (crontab -l 2>/dev/null; echo "0 7 * * * /bin/sync && /bin/sleep 5 && (/sbin/reboot 2>/dev/null || /sbin/shutdown -r now 2>/dev/null)") | crontab -
+        systemctl restart cron
+		print_message "定时任务【定期重启】已添加：每天7点执行 /bin/sync && /bin/sleep 5 && (/sbin/reboot 2>/dev/null || /sbin/shutdown -r now 2>/dev/null)"
+      fi
+
     fi
 
   else
