@@ -65,7 +65,7 @@ nginx_container_create(){
 nginx_config_default() {
   # 生成默认配置（映射到容器外，即宿主机目录）
   print_message "生成默认配置（映射到容器外，即宿主机目录：${global_nginx_home_path}）"
-  docker run -it --rm -v "${global_nginx_home_path}"/conf:/opt/nginx/originals/tmp nginx:1.27.1 sh -c "cp -rp /etc/nginx/* /opt/nginx/originals/tmp"
+  docker run -it --rm -v "${global_nginx_home_path}"/conf:/opt/nginx/originals/tmp "$global_nginx_full_image" sh -c "cp -rp /etc/nginx/* /opt/nginx/originals/tmp"
   cp -rp "${global_nginx_home_path}"/conf/conf.d "${global_nginx_home_path}"/conf/sites
   rm -rf "${global_nginx_home_path}"/conf/sites/*
   if [ -f "${global_nginx_home_path}/conf/conf.d/default.conf" ]; then
