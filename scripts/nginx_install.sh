@@ -53,12 +53,12 @@ nginx_image_pull() {
 }
 
 nginx_container_create(){
-  print_message "创建容器：docker run -d --name $global_nginx_container_name --restart unless-stopped --network host -v $global_nginx_home_path/html:/usr/share/nginx/html -v $global_nginx_home_path/conf:/etc/nginx $global_nginx_full_image"
+  print_message "创建容器：docker run -d --name $global_nginx_container_name --restart unless-stopped --network host -v $global_nginx_home_path/html:/usr/share/nginx/html -v $global_nginx_home_path/conf:/etc/nginx -v $global_nginx_home_path/certbot:/etc/letsencrypt $global_nginx_full_image"
   # -e TZ=Asia/Shanghai
   if [ -z "$global_nginx_time_zone" ]; then
-    docker run -d --name "$global_nginx_container_name" --restart unless-stopped --network host -v "$global_nginx_home_path"/html:/usr/share/nginx/html -v "$global_nginx_home_path"/conf:/etc/nginx "$global_nginx_full_image"
+    docker run -d --name "$global_nginx_container_name" --restart unless-stopped --network host -v "$global_nginx_home_path"/html:/usr/share/nginx/html -v "$global_nginx_home_path"/conf:/etc/nginx -v "$global_nginx_home_path"/certbot:/etc/letsencrypt "$global_nginx_full_image"
   else
-    docker run -d --name "$global_nginx_container_name" --restart unless-stopped --network host -e TZ="$global_nginx_time_zone" -v "$global_nginx_home_path"/html:/usr/share/nginx/html -v "$global_nginx_home_path"/conf:/etc/nginx "$global_nginx_full_image"
+    docker run -d --name "$global_nginx_container_name" --restart unless-stopped --network host -e TZ="$global_nginx_time_zone" -v "$global_nginx_home_path"/html:/usr/share/nginx/html -v "$global_nginx_home_path"/conf:/etc/nginx -v "$global_nginx_home_path"/certbot:/etc/letsencrypt "$global_nginx_full_image"
   fi
 }
 
@@ -838,6 +838,7 @@ env_init() {
   rm -rf "$global_nginx_home_path"
   mkdir -p "$global_nginx_home_path"
   #mkdir "$global_nginx_home_path"/{conf,logs,html,certbot,openssl,tmp}
+  mkdir "$global_nginx_home_path"/certbot
   mkdir "$global_nginx_home_path"/conf
   mkdir "$global_nginx_home_path"/logs
   mkdir "$global_nginx_home_path"/html
