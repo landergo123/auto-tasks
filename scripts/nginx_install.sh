@@ -246,14 +246,15 @@ events {
 }
 
 stream {
-    #log_format sni_log '----- [$time_iso8601][$remote_addr] $protocol SNI="$ssl_preread_server_name" '
-    #                   'upstream=$upstream_addr status=$status time=$session_time';
-    #access_log /dev/stdout sni_log;
+    # log setting[/var/log/nginx/access.log   /dev/null   /dev/stdout]
+    #log_format                      sni_log '----- [\$time_iso8601][\$remote_addr] \$protocol SNI="\$ssl_preread_server_name" '
+    #                                         'upstream=\$upstream_addr status=\$status time=\$session_time';
+    #access_log                       /dev/null sni_log;
 
-    map $ssl_preread_server_name $backend_name {
+    map \$ssl_preread_server_name \$backend_name {
         # cloudflare cdn & vmess websocket
         oss.xxxxx.com reality_backend;
-        #~*(xxxxx\.com)$ web_backend_2;
+        #~*(xxxxx\.com)\$ web_backend_2;
         default web_backend;
     }
 
@@ -279,7 +280,7 @@ stream {
 
         ssl_preread    on;
         #proxy_protocol on;
-        proxy_pass     $backend_name;
+        proxy_pass     \$backend_name;
     }
 
     server {
@@ -357,23 +358,6 @@ http {
     #gzip_disable                    msie6;
     gzip_buffers                     8 16k;
     gzip_types                       text/plain text/xml text/css text/javascript application/json application/javascript application/x-javascript application/xml application/rss+xml application/xhtml+xml font/ttf font/otf image/svg+xml;
-
-    # -------------------------------------------------------------------------------
-    # pre gzip
-    # 
-    # docker exec -it nginx sh
-    # cd /usr/share/nginx/html
-    #
-    # find . -type f \
-    #   ! -name "*.gz" \
-    #   \( -name "*.js" -o -name "*.css" -o -name "*.html" -o -name "*.svg" -o -name "*.json" \) \
-    #   -exec gzip -k -9 {} \;
-    # -------------------------------------------------------------------------------
-    # find . -type f \
-    #   ! -name "*.gz" \
-    #   \( -name "*.js" -o -name "*.css" -o -name "*.html" -o -name "*.svg" -o -name "*.json" \) \
-    #   -exec gzip -f -k -9 {} \;
-    # -------------------------------------------------------------------------------
     gzip_static                      on;
 
     # open_file_cache--------------------
@@ -383,12 +367,12 @@ http {
     open_file_cache_errors           on;
 
     # limit setting: fight DDoS attack, tune the numbers below according your application!!!
-    # usage 1: limit rate/qps, define a limit zone rule: key=$binary_remote_addr, name=qps_limit_per_ip, memerysize=10m, speed=50 per second
-    #limit_req_zone                   $binary_remote_addr zone=qps_limit_per_ip:10m rate=100r/s;
+    # usage 1: limit rate/qps, define a limit zone rule: key=\$binary_remote_addr, name=qps_limit_per_ip, memerysize=10m, speed=50 per second
+    #limit_req_zone                   \$binary_remote_addr zone=qps_limit_per_ip:10m rate=100r/s;
     # apply a limit zone rule: use qps_limit_per_ip rule, allow burst=10 requests into queue
     #limit_req                        zone=qps_limit_per_ip burst=10;
     # usage 2: limit concurrent connection, define a limit zone: key=binary_remote_addr, name=conn_limit_per_ip, memerysize=10m
-    #limit_conn_zone                  $binary_remote_addr zone=conn_limit_per_ip:10m;
+    #limit_conn_zone                  \$binary_remote_addr zone=conn_limit_per_ip:10m;
     #limit_conn                       conn_limit_per_ip 100;
 
     # optimize cache
@@ -404,11 +388,10 @@ http {
     #server_names_hash_max_size      2048;
     #server_names_hash_bucket_size   128;
 
-    # access log setting
-    log_format                       access '[$time_iso8601][$remote_addr]'
-                                        '[status=$status][$bytes_sent][$request_time][$upstream_response_time][$http_origin][$var_cors_origin][$var_connection_header][$server_port $request_method $scheme:/$request_uri]';
-    
-    #access_log                      /var/log/nginx/access.log access;
+    # log setting[/var/log/nginx/access.log   /dev/null   /dev/stdout]
+    log_format                       alertsyslog '[\$time_iso8601][\$remote_addr] \$arg_content';
+    log_format                       access '[\$time_iso8601][\$remote_addr]'
+                                        '[status=\$status][\$bytes_sent][\$request_time][\$upstream_response_time][\$http_origin][\$var_cors_origin][\$var_connection_header][\$server_port \$request_method \$scheme:/\$request_uri]';
     access_log                       /dev/null access;
     
     #include /etc/nginx/conf.d/*.conf;
@@ -428,28 +411,28 @@ http {
     #real_ip_recursive on;
     ## include /etc/nginx/conf.d/nginx_client_real_ip.conf;
 
-    map $http_upgrade $var_connection_header {
+    map \$http_upgrade \$var_connection_header {
         default "";
-        "~.+$" "upgrade";
+        "~.+\$" "upgrade";
         #condition2 value;
     }
 
     # TODO : Example configuration of cors, xxxxx.com (1/4)
-    map $http_origin $var_cors_origin {
+    map \$http_origin \$var_cors_origin {
         default "";
-        "~^http[s]?://(.+\.)?(xxxxx\.cn|xxxxx\.com)$" $http_origin;
-        #"~^http[s]?://(.+\.)?xxxxx\.cn$" $http_origin;
+        "~^http[s]?://(.+\.)?(xxxxx\.cn|xxxxx\.com)\$" \$http_origin;
+        #"~^http[s]?://(.+\.)?xxxxx\.cn\$" \$http_origin;
     }
 
-    #map $uri $file_type {
-    #    ~*\.(html|htm)$ html;
-    #    ~*\.(css|js|eot|ttf|woff|woff2)$ common;
-    #    ~*\.(png|jpg|jpeg|gif|webp|svg|ico)$ img;
+    #map \$uri \$file_type {
+    #    ~*\.(html|htm)\$ html;
+    #    ~*\.(css|js|eot|ttf|woff|woff2)\$ common;
+    #    ~*\.(png|jpg|jpeg|gif|webp|svg|ico)\$ img;
     #    default other;
     #}
     
     # https://www.alibabacloud.com/help/zh/cdn/user-guide/set-the-nginx-cache-policy
-    #map $sent_http_content_type $cache_control {
+    #map \$sent_http_content_type \$cache_control {
     #    text/html                "private, no-cache, must-revalidate";
     #    text/css                 "public, max-age=2592000";
     #    application/javascript   "public, max-age=2592000";
@@ -488,7 +471,7 @@ http {
         listen                       80;
         #listen                      [::]:80;
         #server_name                 xxx.com www.xxx.com;
-        #return                       301 https://$host$request_uri;
+        #return                       301 https://\$host\$request_uri;
 
         # use cloudflare ssl cert
         #certbot cert [Suitable for HTTP-01, but not suitable for DNS-01.]
@@ -498,7 +481,7 @@ http {
         }
 
         location / {
-            return                   301 https://$host$request_uri;
+            return                   301 https://\$host\$request_uri;
         }
     }
 
@@ -533,28 +516,48 @@ http {
         # Add Alt-Svc header to negotiate HTTP/3.
         add_header alt-svc 'h3=":443"; ma=86400';
         # Sent when QUIC was used
-        add_header QUIC-Status $http3;
+        add_header QUIC-Status \$http3;
 
         # vmess
         location /im/msg {
             proxy_redirect                       off;
             proxy_http_version                   1.1;
-            proxy_set_header                     Host $host;
-            proxy_set_header                     X-Real-IP $remote_addr;
-            proxy_set_header                     X-Forwarded-For $proxy_add_x_forwarded_for;
-            proxy_set_header                     Upgrade $http_upgrade;
-            proxy_set_header                     Connection $var_connection_header;
+            proxy_set_header                     Host \$host;
+            proxy_set_header                     X-Real-IP \$remote_addr;
+            proxy_set_header                     X-Forwarded-For \$proxy_add_x_forwarded_for;
+            proxy_set_header                     Upgrade \$http_upgrade;
+            proxy_set_header                     Connection \$var_connection_header;
             proxy_pass                           http://backend_vmess_websocket;
         }
 
         location /my-web-demo {
-            proxy_set_header   X-Real-IP $remote_addr;
-            proxy_set_header   X-Forwarded-For $proxy_add_x_forwarded_for;
-            proxy_set_header   Host $host;
+            proxy_set_header   X-Real-IP \$remote_addr;
+            proxy_set_header   X-Forwarded-For \$proxy_add_x_forwarded_for;
+            proxy_set_header   Host \$host;
             proxy_pass         http://127.0.0.1:3001;
             proxy_http_version 1.1;
-            proxy_set_header   Upgrade $http_upgrade;
+            proxy_set_header   Upgrade \$http_upgrade;
             proxy_set_header   Connection "upgrade";
+        }
+
+        location /alertsys/event {
+            default_type                         application/json;
+            charset utf-8;
+            if (\$arg_auth_code != "Abc123456") {
+                return 403 '{"code":403,"msg":"invalid code"}';
+            }
+            access_log /var/log/nginx/alertsys.log alertsyslog;
+            return 200 '{"code":200,"msg":"success"}';
+        }
+
+        location /alertsys/info/ {
+            default_type text/plain;
+            charset utf-8;
+            if (\$arg_auth_code != "Abc123456") {
+                return 403 'not allowed';
+            }
+            alias /var/log/nginx/;
+            #autoindex on;
         }
 
         # default routing: (only go to one location)
@@ -564,7 +567,7 @@ http {
             index                                index.html index.htm;
         }
         location / {
-            try_files                            $uri =404;
+            try_files                            \$uri =404;
         }
     }
 
@@ -599,7 +602,7 @@ http {
     #    # Add Alt-Svc header to negotiate HTTP/3.
     #    add_header alt-svc 'h3=":443"; ma=86400';
     #    # Sent when QUIC was used
-    #    add_header QUIC-Status $http3;
+    #    add_header QUIC-Status \$http3;
 
     #
     #    # default routing: (only go to one location)
@@ -609,11 +612,12 @@ http {
     #        index                                index.html index.htm;
     #    }
     #    location / {
-    #        try_files                            $uri =404;
+    #        try_files                            \$uri =404;
     #    }
     #}
 
 }
+
 EOF
 }
 
