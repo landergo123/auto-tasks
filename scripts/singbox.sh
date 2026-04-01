@@ -2559,14 +2559,27 @@ option_for_install(){
 
   if [ "$global_reality_enabled" = "Y" -o "$global_hysteria2_enabled" = "Y" -o "$global_vmess_ws_enabled" = "Y" -o "$global_shadowsocks_enabled" = "Y" ]; then
     sing_box_install
+    print_message "sing-box 正在重启 ..."
     sudo systemctl restart sing-box
+    if [ $? -ne 0 ]; then
+        print_message "sing-box 重启失败"
+    else
+        print_message "sing-box 重启成功"
+    fi
 
+    print_message "正在配置定时任务：滚动日志 & 周期重启"
     if command_exists crontab; then
       CRON_CHANGE="N"
       TMP_CRON="/tmp/cron_tmp_333"
-      crontab -l 2>/dev/null > $TMP_CRON
+      # 如果有任务就导出，没有任务就创建一个空文件
+	  # crontab -l 2>/dev/null > $TMP_CRON || true
+      if crontab -l >/dev/null 2>&1; then
+        crontab -l > $TMP_CRON
+      else
+        touch $TMP_CRON
+      fi
 
-      if crontab -l | grep -q "sing-box.log"; then
+      if grep -q "sing-box.log" "$TMP_CRON"; then
         print_message "定时任务【滚动日志】已存在，无需添加"
       else
         echo "0 6 * * * cat /dev/null > ${global_box_log_path}/sing-box.log" >> $TMP_CRON
@@ -2574,7 +2587,7 @@ option_for_install(){
         print_message "定时任务【滚动日志】已添加：每天6点执行 cat /dev/null >${global_box_log_path}/sing-box.log"
       fi
 
-      if crontab -l | grep -q "reboot"; then
+      if grep -q "reboot" "$TMP_CRON"; then
         print_message "定时任务【定期重启】已存在，无需添加"
       else
         echo "0 7 * * * /bin/sync && /bin/sleep 5 && (/sbin/reboot 2>/dev/null || /sbin/shutdown -r now 2>/dev/null)" >> $TMP_CRON
@@ -2584,11 +2597,11 @@ option_for_install(){
       
       if [ "$CRON_CHANGE" = "Y" ]; then
         crontab $TMP_CRON
-        systemctl restart cron
+        systemctl restart cron || systemctl restart crond || true
       fi
       rm -f $TMP_CRON
     fi
-
+    print_message "配置定时任务配置完成"
   else
     return 1
   fi
