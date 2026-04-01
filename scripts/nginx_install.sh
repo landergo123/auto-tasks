@@ -552,7 +552,6 @@ http {
 
         location /files/ {
             charset                              utf-8;
-            root                                 /usr/share/nginx/html;
             #autoindex                           on;
             auth_basic                           "Restricted Access - Please Login";
             auth_basic_user_file                 /etc/nginx/secrets/.htpasswd;
@@ -627,6 +626,33 @@ http {
     #        default_type text/plain;
     #        #return 200 "Your IP: \$remote_addr\nHeaders: \$http_x_forwarded_for";
     #        return 200 "Your IP: \$remote_addr";
+    #    }
+
+    #    location /files/ {
+    #        charset                              utf-8;
+    #        #autoindex                           on;
+    #        auth_basic                           "Restricted Access - Please Login";
+    #        auth_basic_user_file                 /etc/nginx/secrets/.htpasswd;
+    #    }
+
+    #    location /alertsys/event {
+    #        default_type                         application/json;
+    #        charset utf-8;
+    #        if (\$arg_auth_code != "Abc123456") {
+    #            return 403 '{"code":403,"msg":"invalid code"}';
+    #        }
+    #        access_log /var/log/nginx/alertsys.log alertsyslog;
+    #        return 200 '{"code":200,"msg":"success"}';
+    #    }
+
+    #    location /alertsys/info/ {
+    #        default_type text/plain;
+    #        charset utf-8;
+    #        if (\$arg_auth_code != "Abc123456") {
+    #            return 403 'not allowed';
+    #        }
+    #        alias /var/log/nginx/;
+    #        #autoindex on;
     #    }
 
     #
@@ -883,7 +909,7 @@ nginx_create_http_htpasswd() {
   #printf "test:$(openssl crypt 123456 $(openssl rand -base64 8))\n" > /etc/nginx/.htpasswd
   # 密码： openssl passwd -apr1 Abc123456
   # echo "ghostman:\$apr1\$IZ9eM22x\$zfAtz9iHXjtPrqF41WO5V1" > "$global_nginx_home_path"/conf/secrets/.htpasswd
-  echo 'ghostman:$apr1$IZ9eM22x$zfAtz9iHXjtPrqF41WO5V1' > "$global_nginx_home_path"/conf/secrets/.htpasswd
+  echo 'ghostman:$apr1$IZ9eM22x$zfAtz9iHXjtPrqF41WO5V1' >> "$global_nginx_home_path"/conf/secrets/.htpasswd
 }
 
 
