@@ -550,6 +550,14 @@ http {
             return 200 "Your IP: \$remote_addr";
         }
 
+        location /files/ {
+            charset                              utf-8;
+            root                                 /usr/share/nginx/html;
+            #autoindex                           on;
+            auth_basic                           "Restricted Access - Please Login";
+            auth_basic_user_file                 /etc/nginx/secrets/.htpasswd;
+        }
+
         location /alertsys/event {
             default_type                         application/json;
             charset utf-8;
@@ -866,6 +874,16 @@ env_init() {
   mkdir "$global_nginx_home_path"/tmp
   mkdir "$global_nginx_home_path"/conf/originals
   mkdir "$global_nginx_home_path"/conf/certs
+  mkdir "$global_nginx_home_path"/conf/secrets
+}
+
+nginx_create_http_htpasswd() {
+  # global_nginx_home_path=/opt/softs/nginx-quic
+  #mkdir "$global_nginx_home_path"/conf/secrets
+  #printf "test:$(openssl crypt 123456 $(openssl rand -base64 8))\n" > /etc/nginx/.htpasswd
+  # 密码： openssl passwd -apr1 Abc123456
+  # echo "ghostman:\$apr1\$IZ9eM22x\$zfAtz9iHXjtPrqF41WO5V1" > "$global_nginx_home_path"/conf/secrets/.htpasswd
+  echo 'ghostman:$apr1$IZ9eM22x$zfAtz9iHXjtPrqF41WO5V1' > "$global_nginx_home_path"/conf/secrets/.htpasswd
 }
 
 
@@ -941,6 +959,7 @@ if ! env_init; then
 fi
 
 nginx_config_default
+nginx_create_http_htpasswd
 nginx_config_main
 nginx_config_vmess_websocket
 nginx_config_open_webui
