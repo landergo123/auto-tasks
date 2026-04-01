@@ -279,6 +279,9 @@ stream {
         #listen [::]:443;
 
         ssl_preread    on;
+        ## 开启proxy_protocol的话，Nginx会向所有的上游（不仅web_backend，还包括reality_backend 和 hysteria2_backend）发送 Proxy Protocol 协议头。
+        ## 但是sing box不支持proxy_protocol协议头解析，会导致singbox服务异常
+        ## 如果开启，可以使用【real_ip_header proxy_protocol;】读取客户端IP
         #proxy_protocol on;
         proxy_pass     \$backend_name;
     }
@@ -391,7 +394,7 @@ http {
     # log setting[/var/log/nginx/access.log   /dev/null   /dev/stdout]
     log_format                       alertsyslog '[\$time_iso8601][\$remote_addr] \$arg_content';
     log_format                       access '[\$time_iso8601][\$remote_addr]'
-                                        '[status=\$status][\$bytes_sent][\$request_time][\$upstream_response_time][\$http_origin][\$var_cors_origin][\$var_connection_header][\$server_port \$request_method \$scheme:/\$request_uri]';
+                                        '[status=\$status][\$bytes_sent][\$request_time][\$upstream_response_time][\$http_origin][\$var_cors_origin][\$var_connection_header][\$server_port \$request_method \$scheme://\$host\$request_uri]';
     access_log                       /dev/null access;
     
     #include /etc/nginx/conf.d/*.conf;
@@ -492,8 +495,9 @@ http {
         http2                        on;
 
         set_real_ip_from             127.0.0.1;
-        # TODO UDP ???
-        real_ip_header               proxy_protocol;
+        real_ip_header               X-Forwarded-For;
+        #real_ip_header              proxy_protocol;
+        real_ip_recursive            on;
 
         # SSL setting
         ssl_certificate              /etc/letsencrypt/live/xxxxx.com/fullchain.pem;
@@ -540,6 +544,12 @@ http {
             proxy_set_header   Connection "upgrade";
         }
 
+        location /myip {
+            default_type text/plain;
+            #return 200 "Your IP: \$remote_addr\nHeaders: \$http_x_forwarded_for";
+            return 200 "Your IP: \$remote_addr";
+        }
+
         location /alertsys/event {
             default_type                         application/json;
             charset utf-8;
@@ -578,8 +588,9 @@ http {
     #    http2                        on;
 
     #    set_real_ip_from             127.0.0.1;
-    #    # TODO UDP ???
-    #    real_ip_header               proxy_protocol;
+    #    real_ip_header               X-Forwarded-For;
+    #    #real_ip_header              proxy_protocol;
+    #    real_ip_recursive            on;
 
     #    # SSL setting
     #    ssl_certificate              /etc/letsencrypt/live/xxxxx.com/fullchain.pem;
@@ -603,6 +614,12 @@ http {
     #    add_header alt-svc 'h3=":443"; ma=86400';
     #    # Sent when QUIC was used
     #    add_header QUIC-Status \$http3;
+
+    #    location /myip {
+    #        default_type text/plain;
+    #        #return 200 "Your IP: \$remote_addr\nHeaders: \$http_x_forwarded_for";
+    #        return 200 "Your IP: \$remote_addr";
+    #    }
 
     #
     #    # default routing: (only go to one location)
