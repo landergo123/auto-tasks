@@ -577,7 +577,7 @@ while true; do
   print_message "enable_bbr"
   print_message "optimize_network"
   print_message "docker_install latest"
-  print_message "singbox install /opt/softs 1.12.25 Y 5443 itunes.apple.com Y 6443 bing.com Y 7443 /im/msg Y 8080"
+  print_message "singbox install /opt/softs 1.12.25 Y 5443 itunes.apple.com Y 6443 bing.com Y 7443 /im/msg Y 8080 Y 4443 itunes.apple.com"
   print_message "nginx_install 1.28-alpine /opt/softs nginx-quic Asia/Tokyo"
   print_message "ok"
   print_message "----------------------------------------------------------------------"

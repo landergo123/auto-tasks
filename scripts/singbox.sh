@@ -42,6 +42,16 @@ global_shadowsocks_port=
 global_shadowsocks_password=
 global_shadowsocks_method="2022-blake3-aes-128-gcm"
 
+global_anytls_enabled=
+global_anytls_port=
+global_anytls_user=
+global_anytls_password=
+global_anytls_tls_sni=
+global_anytls_tls_key_pair=
+global_anytls_tls_private_key=
+global_anytls_tls_public_key=
+global_anytls_tls_random=
+
 global_code_failure=50
 global_code_param_missing=11
 global_code_param_invalid=12
@@ -62,6 +72,9 @@ readonly DEFAULT_VMESS_PORT=7443
 readonly DEFAULT_VMESS_WS_PATH="/im/msg"
 readonly DEFAULT_SHADOWSOCKS_ENABLED="Y"
 readonly DEFAULT_SHADOWSOCKS_PORT=8080
+readonly DEFAULT_ANYTLS_ENABLED="Y"
+readonly DEFAULT_ANYTLS_PORT=4443
+readonly DEFAULT_ANYTLS_SNI="bing.com"
 readonly DEFAULT_CF_VERSION="N"
 
 print_message(){
@@ -378,6 +391,17 @@ sing_box_config_init() {
     print_message "正在生成 Shadowsocks协议 配置参数 ..."
     global_shadowsocks_password=$("${global_box_home_path}"/sing-box generate rand --base64 16)
   fi
+
+  if [ "$global_anytls_enabled" = "Y" ]; then
+    print_message "正在生成 AnyTLS协议 配置参数 ..."
+    global_anytls_tls_key_pair=$("${global_box_home_path}"/sing-box generate reality-keypair)
+    global_anytls_tls_private_key=$(echo "$global_anytls_tls_key_pair" | awk '/PrivateKey/ {print $2}' | tr -d '"')
+    global_anytls_tls_public_key=$(echo "$global_anytls_tls_key_pair" | awk '/PublicKey/ {print $2}' | tr -d '"')
+    echo "$global_anytls_tls_private_key" | base64 > "${global_box_home_path}"/anytls.private.key.base64
+    echo "$global_anytls_tls_public_key" | base64 > "${global_box_home_path}"/anytls.public.key.base64
+    global_anytls_password=$("${global_box_home_path}"/sing-box generate uuid)
+    global_anytls_tls_random=$("${global_box_home_path}"/sing-box generate rand --hex 8)
+  fi
 }
 
 sing_box_config_load() {
@@ -427,6 +451,13 @@ sing_box_config_load() {
       global_shadowsocks_port=$(jq -r ".inbounds[${i}].listen_port" "${global_box_home_path}"/config.json)
       global_shadowsocks_password=$(jq -r ".inbounds[${i}].password" "${global_box_home_path}"/config.json)
       global_shadowsocks_method=$(jq -r ".inbounds[${i}].method" "${global_box_home_path}"/config.json)
+
+    elif [ "$tag" = "in-anytls" ]; then
+      global_anytls_port=$(jq -r ".inbounds[${i}].listen_port" "${global_box_home_path}"/config.json)
+      global_anytls_tls_sni=$(jq -r ".inbounds[${i}].tls.server_name" "${global_box_home_path}"/config.json)
+      global_anytls_tls_public_key=$(base64 --decode "${global_box_home_path}"/anytls.public.key.base64)
+      global_anytls_password=$(jq -r ".inbounds[${i}].users[0].password" "${global_box_home_path}"/config.json)
+      global_anytls_tls_random=$(jq -r ".inbounds[${i}].tls.reality.short_id[0]" "${global_box_home_path}"/config.json)
 
     else
       print_message "无法识别的客户端连接信息:$tag"
@@ -548,6 +579,51 @@ ${inbounds_str}{
             "users": [],
             "managed": false,
             "multiplex": {}
+        }
+EOF
+)
+  fi
+
+  if [ "$global_anytls_enabled" = "Y" ]; then
+    if [ -n "$inbounds_str" ]; then
+      inbounds_str="${inbounds_str}, "
+    fi
+    inbounds_str=$(cat <<EOF
+${inbounds_str}{
+            "tag": "in-anytls",
+            "type": "anytls",
+            "listen": "::",
+            "listen_port": ${global_anytls_port},
+            "users": [{
+                "name": "xxxxxxxxxx",
+                "password": "${global_anytls_password}"
+            }],
+            "tls": {
+                "enabled": true,
+                "server_name": "${global_anytls_tls_sni}",
+                "reality": {
+                    "enabled": true,
+                    "handshake": {
+                        "server": "${global_anytls_tls_sni}",
+                        "server_port": 443
+                    },
+                    "private_key": "${global_anytls_tls_private_key}",
+                    "short_id": [
+                        "${global_anytls_tls_random}"
+                    ]
+                }
+            },
+            "padding_scheme": [
+                "stop=8",
+                "0=30-30",
+                "1=100-400",
+                "2=400-500,c,500-1000,c,500-1000,c,500-1000,c,500-1000",
+                "3=9-9,500-1000",
+                "4=500-1000",
+                "5=500-1000",
+                "6=500-1000",
+                "7=500-1000"
+            ]
         }
 EOF
 )
@@ -1099,6 +1175,29 @@ sing_box_config_show_box() {
             "password": "${global_shadowsocks_password}",
             "multiplex": {}
         },{
+            "tag": "out-anytls-iplc",
+            "type": "anytls",
+            "detour": "专线选择",
+            "server": "${ip}",
+            "server_port": ${global_anytls_port},
+            "password": "${global_anytls_password}",
+            "idle_session_check_interval": "30s",
+            "idle_session_timeout": "30s",
+            "min_idle_session": 5,
+            "tls": {
+                "enabled": true,
+                "server_name": "${global_anytls_tls_sni}",
+                "utls": {
+                    "enabled": true,
+                    "fingerprint": "chrome"
+                },
+                "reality": {
+                    "enabled": true,
+                    "public_key": "${global_anytls_tls_public_key}",
+                    "short_id": "${global_anytls_tls_random}"
+                }
+            }
+        },{
             "tag": "out-reality",
             "type": "vless",
             "server": "${ip}",
@@ -1171,6 +1270,28 @@ sing_box_config_show_box() {
             "method": "${global_shadowsocks_method}",
             "password": "${global_shadowsocks_password}",
             "multiplex": {}
+        },{
+            "tag": "out-anytls",
+            "type": "anytls",
+            "server": "${ip}",
+            "server_port": ${global_anytls_port},
+            "password": "${global_anytls_password}",
+            "idle_session_check_interval": "30s",
+            "idle_session_timeout": "30s",
+            "min_idle_session": 5,
+            "tls": {
+                "enabled": true,
+                "server_name": "${global_anytls_tls_sni}",
+                "utls": {
+                    "enabled": true,
+                    "fingerprint": "chrome"
+                },
+                "reality": {
+                    "enabled": true,
+                    "public_key": "${global_anytls_tls_public_key}",
+                    "short_id": "${global_anytls_tls_random}"
+                }
+            }
         },{
             "tag": "直连",
             "type": "direct"
@@ -2554,10 +2675,55 @@ option_for_install(){
       fi
     fi
 
+    if [ "$global_anytls_enabled" = "" ]; then
+      printf "是否开启 AnyTLS 协议【默认=${DEFAULT_ANYTLS_ENABLED}；Y=是，N=否】，请输入【Y/N】："
+      read -r text
+      if [ "$text" = "" ]; then
+        global_anytls_enabled=${DEFAULT_ANYTLS_ENABLED}
+        continue
+      elif [ "$text" = "Y" -o "$text" = "y" ]; then
+        global_anytls_enabled="Y"
+        continue
+      elif [ "$text" = "N" -o "$text" = "n" ]; then
+        global_anytls_enabled="N"
+        continue
+      else
+        continue
+      fi
+    fi
+
+    if [ "$global_anytls_port" = "" ]; then
+      printf "设置 AnyTLS协议 端口号（默认：${DEFAULT_ANYTLS_PORT}），请输入【80~65535】："
+      read -r text
+      if [ -z "$text" ]; then
+        global_anytls_port="${DEFAULT_ANYTLS_PORT}"
+        continue
+      elif is_port $text; then
+        global_anytls_port="$text"
+        continue
+      else
+        continue
+      fi
+    fi
+
+    if [ "$global_anytls_tls_sni" = "" ]; then
+      printf "设置 AnyTLS协议 伪装域名（默认：${DEFAULT_ANYTLS_SNI}），请输入："
+      read -r text
+      if [ -z "$text" ]; then
+        global_anytls_tls_sni="${DEFAULT_ANYTLS_SNI}"
+        continue
+      elif is_domain $text; then
+        global_anytls_tls_sni="$text"
+        continue
+      else
+        continue
+      fi
+    fi
+
     break
   done
 
-  if [ "$global_reality_enabled" = "Y" -o "$global_hysteria2_enabled" = "Y" -o "$global_vmess_ws_enabled" = "Y" -o "$global_shadowsocks_enabled" = "Y" ]; then
+  if [ "$global_reality_enabled" = "Y" -o "$global_hysteria2_enabled" = "Y" -o "$global_vmess_ws_enabled" = "Y" -o "$global_shadowsocks_enabled" = "Y" -o "$global_anytls_enabled" = "Y" ]; then
     sing_box_install
     print_message "sing-box 正在重启 ..."
     sudo systemctl restart sing-box
@@ -2644,6 +2810,15 @@ params_unset_padding_default(){
   if [ -z "$global_shadowsocks_port" ]; then
     global_shadowsocks_port="${DEFAULT_SHADOWSOCKS_PORT}"
   fi
+  if [ -z "$global_anytls_enabled" ]; then
+    global_anytls_enabled="${DEFAULT_ANYTLS_ENABLED}"
+  fi
+  if [ -z "$global_anytls_port" ]; then
+    global_anytls_port="${DEFAULT_ANYTLS_PORT}"
+  fi
+  if [ -z "$global_anytls_tls_sni" ]; then
+    global_anytls_tls_sni="${DEFAULT_ANYTLS_SNI}"
+  fi
   if [ -z "$global_cf_enabled" ]; then
     global_cf_enabled="${DEFAULT_CF_VERSION}"
   fi
@@ -2651,7 +2826,7 @@ params_unset_padding_default(){
 
 
 # 主流程 --------开始-------------------------------
-# install /opt/softs 1.12.25 Y 5443 itunes.apple.com Y 6443 bing.com Y 7443 /im/msg Y 8080
+# install /opt/softs 1.12.25 Y 5443 itunes.apple.com Y 6443 bing.com Y 7443 /im/msg Y 8080 Y 4443 itunes.apple.com
 # cloudflared
 # 操作编码 -> Singbox 版本号(默认1.12.25：latest最新) -> Reality (是否开启、端口、伪装域名)-> Hysteria2（是否开启、端口、证书域名）-> vmess（是否开启、端口、WS路径） -> -> -> -> -> -> -> ->
 option="$1"
@@ -2668,7 +2843,10 @@ global_vmess_ws_port="${11}"
 global_vmess_ws_path="${12}"
 global_shadowsocks_enabled="${13}"
 global_shadowsocks_port="${14}"
-global_cf_enabled="${15}"
+global_anytls_enabled="${15}"
+global_anytls_port="${16}"
+global_anytls_tls_sni="${17}"
+global_cf_enabled="${18}"
 #if [ "$install_path" = "" ]; then
   #print_message "请指定sing-box安装的目录，比如 /opt/softs"
   #exit_now $global_code_failure
