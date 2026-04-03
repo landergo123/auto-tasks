@@ -416,7 +416,26 @@ sing_box_config_load() {
   while [ $i -lt $inbounds_count ]; do
   #for ((i=0; i<inbounds_count; i++)); do
     tag=$(jq -r ".inbounds[${i}].tag" "${global_box_home_path}"/config.json)
-    if [ "$tag" = "in-reality" ]; then
+
+    if [ "$tag" = "in-vmess-ws" ]; then
+      global_vmess_ws_port=$(jq -r ".inbounds[${i}].listen_port" "${global_box_home_path}"/config.json)
+      global_vmess_ws_auth_password=$(jq -r ".inbounds[${i}].users[0].uuid" "${global_box_home_path}"/config.json)
+      global_vmess_ws_path=$(jq -r ".inbounds[${i}].transport.path" "${global_box_home_path}"/config.json)
+      argo=$( get_internet_argo )
+      if [ -z "${argo}" ]; then
+        argo=$( get_internet_ip )
+      else
+        global_vmess_ws_port=443
+      fi
+
+    elif [ "$tag" = "in-anytls" ]; then
+      global_anytls_port=$(jq -r ".inbounds[${i}].listen_port" "${global_box_home_path}"/config.json)
+      global_anytls_tls_sni=$(jq -r ".inbounds[${i}].tls.server_name" "${global_box_home_path}"/config.json)
+      global_anytls_tls_public_key=$(base64 --decode "${global_box_home_path}"/anytls.public.key.base64)
+      global_anytls_password=$(jq -r ".inbounds[${i}].users[0].password" "${global_box_home_path}"/config.json)
+      global_anytls_tls_random=$(jq -r ".inbounds[${i}].tls.reality.short_id[0]" "${global_box_home_path}"/config.json)
+
+    elif [ "$tag" = "in-reality" ]; then
       global_reality_port=$(jq -r ".inbounds[${i}].listen_port" "${global_box_home_path}"/config.json)
       global_reality_tls_sni=$(jq -r ".inbounds[${i}].tls.server_name" "${global_box_home_path}"/config.json)
       global_reality_tls_public_key=$(base64 --decode "${global_box_home_path}"/reality.public.key.base64)
@@ -436,28 +455,10 @@ sing_box_config_load() {
       global_hysteria2_tls_public_key_path="${global_box_home_path}/hysteria2.public.key"
       global_hysteria2_tls_private_key_path="${global_box_home_path}/hysteria2.private.key"
 
-    elif [ "$tag" = "in-vmess-ws" ]; then
-      global_vmess_ws_port=$(jq -r ".inbounds[${i}].listen_port" "${global_box_home_path}"/config.json)
-      global_vmess_ws_auth_password=$(jq -r ".inbounds[${i}].users[0].uuid" "${global_box_home_path}"/config.json)
-      global_vmess_ws_path=$(jq -r ".inbounds[${i}].transport.path" "${global_box_home_path}"/config.json)
-      argo=$( get_internet_argo )
-      if [ -z "${argo}" ]; then
-        argo=$( get_internet_ip )
-      else
-        global_vmess_ws_port=443
-      fi
-
-    elif [ "$tag" = "in-ss" ]; then
+    elif [ "$tag" = "in-shadowsocks" ]; then
       global_shadowsocks_port=$(jq -r ".inbounds[${i}].listen_port" "${global_box_home_path}"/config.json)
       global_shadowsocks_password=$(jq -r ".inbounds[${i}].password" "${global_box_home_path}"/config.json)
       global_shadowsocks_method=$(jq -r ".inbounds[${i}].method" "${global_box_home_path}"/config.json)
-
-    elif [ "$tag" = "in-anytls" ]; then
-      global_anytls_port=$(jq -r ".inbounds[${i}].listen_port" "${global_box_home_path}"/config.json)
-      global_anytls_tls_sni=$(jq -r ".inbounds[${i}].tls.server_name" "${global_box_home_path}"/config.json)
-      global_anytls_tls_public_key=$(base64 --decode "${global_box_home_path}"/anytls.public.key.base64)
-      global_anytls_password=$(jq -r ".inbounds[${i}].users[0].password" "${global_box_home_path}"/config.json)
-      global_anytls_tls_random=$(jq -r ".inbounds[${i}].tls.reality.short_id[0]" "${global_box_home_path}"/config.json)
 
     else
       print_message "无法识别的客户端连接信息:$tag"
@@ -470,6 +471,78 @@ sing_box_config_load() {
 sing_box_config_save() {
   print_message "正在保存配置：${global_box_home_path}/config.json"
   inbounds_str=""
+
+  if [ "$global_vmess_ws_enabled" = "Y" ]; then
+    if [ -n "$inbounds_str" ]; then
+      inbounds_str="${inbounds_str}, "
+    fi
+    inbounds_str=$(cat <<EOF
+${inbounds_str}{
+            "tag": "in-vmess-ws",
+            "type": "vmess",
+            "listen": "::",
+            "listen_port": ${global_vmess_ws_port},
+            "users": [{
+                "uuid": "${global_vmess_ws_auth_password}",
+                "alterId": 0
+            }],
+            "transport": {
+                "type": "ws",
+                "path": "${global_vmess_ws_path}",
+                "headers": {
+                    
+                }
+            }
+        }
+EOF
+)
+  fi
+
+  if [ "$global_anytls_enabled" = "Y" ]; then
+    if [ -n "$inbounds_str" ]; then
+      inbounds_str="${inbounds_str}, "
+    fi
+    inbounds_str=$(cat <<EOF
+${inbounds_str}{
+            "tag": "in-anytls",
+            "type": "anytls",
+            "listen": "::",
+            "listen_port": ${global_anytls_port},
+            "users": [{
+                "name": "xxxxxxxxxx",
+                "password": "${global_anytls_password}"
+            }],
+            "tls": {
+                "enabled": true,
+                "server_name": "${global_anytls_tls_sni}",
+                "reality": {
+                    "enabled": true,
+                    "handshake": {
+                        "server": "${global_anytls_tls_sni}",
+                        "server_port": 443
+                    },
+                    "private_key": "${global_anytls_tls_private_key}",
+                    "short_id": [
+                        "${global_anytls_tls_random}"
+                    ]
+                }
+            },
+            "padding_scheme": [
+                "stop=8",
+                "0=30-30",
+                "1=100-400",
+                "2=400-500,c,500-1000,c,500-1000,c,500-1000,c,500-1000",
+                "3=9-9,500-1000",
+                "4=500-1000",
+                "5=500-1000",
+                "6=500-1000",
+                "7=500-1000"
+            ]
+        }
+EOF
+)
+  fi
+
   if [ "$global_reality_enabled" = "Y" ]; then
     inbounds_str=$(cat <<EOF
 ${inbounds_str}{
@@ -538,39 +611,13 @@ EOF
 )
   fi
 
-  if [ "$global_vmess_ws_enabled" = "Y" ]; then
-    if [ -n "$inbounds_str" ]; then
-      inbounds_str="${inbounds_str}, "
-    fi
-    inbounds_str=$(cat <<EOF
-${inbounds_str}{
-            "tag": "in-vmess-ws",
-            "type": "vmess",
-            "listen": "::",
-            "listen_port": ${global_vmess_ws_port},
-            "users": [{
-                "uuid": "${global_vmess_ws_auth_password}",
-                "alterId": 0
-            }],
-            "transport": {
-                "type": "ws",
-                "path": "${global_vmess_ws_path}",
-                "headers": {
-                    
-                }
-            }
-        }
-EOF
-)
-  fi
-
   if [ "$global_shadowsocks_enabled" = "Y" ]; then
     if [ -n "$inbounds_str" ]; then
       inbounds_str="${inbounds_str}, "
     fi
     inbounds_str=$(cat <<EOF
 ${inbounds_str}{
-            "tag": "in-ss",
+            "tag": "in-shadowsocks",
             "type": "shadowsocks",
             "listen": "::",
             "listen_port": ${global_shadowsocks_port},
@@ -579,51 +626,6 @@ ${inbounds_str}{
             "users": [],
             "managed": false,
             "multiplex": {}
-        }
-EOF
-)
-  fi
-
-  if [ "$global_anytls_enabled" = "Y" ]; then
-    if [ -n "$inbounds_str" ]; then
-      inbounds_str="${inbounds_str}, "
-    fi
-    inbounds_str=$(cat <<EOF
-${inbounds_str}{
-            "tag": "in-anytls",
-            "type": "anytls",
-            "listen": "::",
-            "listen_port": ${global_anytls_port},
-            "users": [{
-                "name": "xxxxxxxxxx",
-                "password": "${global_anytls_password}"
-            }],
-            "tls": {
-                "enabled": true,
-                "server_name": "${global_anytls_tls_sni}",
-                "reality": {
-                    "enabled": true,
-                    "handshake": {
-                        "server": "${global_anytls_tls_sni}",
-                        "server_port": 443
-                    },
-                    "private_key": "${global_anytls_tls_private_key}",
-                    "short_id": [
-                        "${global_anytls_tls_random}"
-                    ]
-                }
-            },
-            "padding_scheme": [
-                "stop=8",
-                "0=30-30",
-                "1=100-400",
-                "2=400-500,c,500-1000,c,500-1000,c,500-1000,c,500-1000",
-                "3=9-9,500-1000",
-                "4=500-1000",
-                "5=500-1000",
-                "6=500-1000",
-                "7=500-1000"
-            ]
         }
 EOF
 )
@@ -1123,7 +1125,117 @@ sing_box_config_show_box() {
     ],
     "outbounds": [
         {
-            "tag": "out-reality-iplc",
+            "tag": "out-vmws",
+            "type": "vmess",
+            "server": "$argo",
+            "server_port": ${global_vmess_ws_port},
+            "uuid": "${global_vmess_ws_auth_password}",
+            "alter_id": 0,
+            "security": "auto",
+            "tls": {
+                "enabled": true,
+                "server_name": "$argo",
+                "insecure": true,
+                "utls": {
+                    "enabled": true,
+                    "fingerprint": "chrome"
+                }
+            },
+            "transport": {
+                "type": "ws",
+                "path": "${global_vmess_ws_path}",
+                "headers": {
+                    "Host": ["$argo"]
+                }
+            }
+        },{
+            "tag": "out-xtls",
+            "type": "anytls",
+            "server": "${ip}",
+            "server_port": ${global_anytls_port},
+            "password": "${global_anytls_password}",
+            "idle_session_check_interval": "30s",
+            "idle_session_timeout": "30s",
+            "min_idle_session": 5,
+            "tls": {
+                "enabled": true,
+                "server_name": "${global_anytls_tls_sni}",
+                "utls": {
+                    "enabled": true,
+                    "fingerprint": "chrome"
+                },
+                "reality": {
+                    "enabled": true,
+                    "public_key": "${global_anytls_tls_public_key}",
+                    "short_id": "${global_anytls_tls_random}"
+                }
+            }
+        },{
+            "tag": "out-xtls2",
+            "type": "vless",
+            "server": "${ip}",
+            "server_port": ${global_reality_port},
+            "uuid": "${global_reality_auth_password}",
+            "flow": "xtls-rprx-vision",
+            "packet_encoding": "xudp",
+            "tls": {
+                "enabled": true,
+                "server_name": "${global_reality_tls_sni}",
+                "utls": {
+                    "enabled": true,
+                    "fingerprint": "chrome"
+                },
+                "reality": {
+                    "enabled": true,
+                    "public_key": "${global_reality_tls_public_key}",
+                    "short_id": "${global_reality_tls_random}"
+                }
+            }
+        },{
+            "tag": "out-hy2",
+            "type": "hysteria2",
+            "server": "$ip",
+            "server_port": ${global_hysteria2_port},
+            "up_mbps": 100,
+            "down_mbps": 100,
+            "password": "${global_hysteria2_auth_password}",
+            "obfs": {
+                "type": "salamander",
+                "password": "${global_hysteria2_obfs_password}"
+            },
+            "tls": {
+                "enabled": true,
+                "server_name": "${global_hysteria2_tls_sni}",
+                "insecure": true,
+                "alpn": [
+                    "h3"
+                ]
+            }
+        },{
+            "tag": "out-xtls-iplc",
+            "type": "anytls",
+            "detour": "专线选择",
+            "server": "${ip}",
+            "server_port": ${global_anytls_port},
+            "password": "${global_anytls_password}",
+            "idle_session_check_interval": "30s",
+            "idle_session_timeout": "30s",
+            "min_idle_session": 5,
+            "tls": {
+                "enabled": true,
+                "server_name": "${global_anytls_tls_sni}",
+                "utls": {
+                    "enabled": true,
+                    "fingerprint": "chrome"
+                },
+                "reality": {
+                    "enabled": true,
+                    "public_key": "${global_anytls_tls_public_key}",
+                    "short_id": "${global_anytls_tls_random}"
+                }
+            }
+        },{
+            "tag": "out-xtls2-iplc",
             "type": "vless",
             "detour": "专线选择",
             "server": "${ip}",
@@ -1145,7 +1257,7 @@ sing_box_config_show_box() {
                 }
             }
         },{
-            "tag": "out-hysteria2-iplc",
+            "tag": "out-hy2-iplc",
             "type": "hysteria2",
             "detour": "专线选择",
             "server": "$ip",
@@ -1175,124 +1287,6 @@ sing_box_config_show_box() {
             "password": "${global_shadowsocks_password}",
             "multiplex": {}
         },{
-            "tag": "out-anytls-iplc",
-            "type": "anytls",
-            "detour": "专线选择",
-            "server": "${ip}",
-            "server_port": ${global_anytls_port},
-            "password": "${global_anytls_password}",
-            "idle_session_check_interval": "30s",
-            "idle_session_timeout": "30s",
-            "min_idle_session": 5,
-            "tls": {
-                "enabled": true,
-                "server_name": "${global_anytls_tls_sni}",
-                "utls": {
-                    "enabled": true,
-                    "fingerprint": "chrome"
-                },
-                "reality": {
-                    "enabled": true,
-                    "public_key": "${global_anytls_tls_public_key}",
-                    "short_id": "${global_anytls_tls_random}"
-                }
-            }
-        },{
-            "tag": "out-reality",
-            "type": "vless",
-            "server": "${ip}",
-            "server_port": ${global_reality_port},
-            "uuid": "${global_reality_auth_password}",
-            "flow": "xtls-rprx-vision",
-            "packet_encoding": "xudp",
-            "tls": {
-                "enabled": true,
-                "server_name": "${global_reality_tls_sni}",
-                "utls": {
-                    "enabled": true,
-                    "fingerprint": "chrome"
-                },
-                "reality": {
-                    "enabled": true,
-                    "public_key": "${global_reality_tls_public_key}",
-                    "short_id": "${global_reality_tls_random}"
-                }
-            }
-        },{
-            "tag": "out-hysteria2",
-            "type": "hysteria2",
-            "server": "$ip",
-            "server_port": ${global_hysteria2_port},
-            "up_mbps": 100,
-            "down_mbps": 100,
-            "password": "${global_hysteria2_auth_password}",
-            "obfs": {
-                "type": "salamander",
-                "password": "${global_hysteria2_obfs_password}"
-            },
-            "tls": {
-                "enabled": true,
-                "server_name": "${global_hysteria2_tls_sni}",
-                "insecure": true,
-                "alpn": [
-                    "h3"
-                ]
-            }
-        },{
-            "tag": "out-vmess-ws",
-            "type": "vmess",
-            "server": "$argo",
-            "server_port": ${global_vmess_ws_port},
-            "uuid": "${global_vmess_ws_auth_password}",
-            "alter_id": 0,
-            "security": "auto",
-            "tls": {
-                "enabled": true,
-                "server_name": "$argo",
-                "insecure": true,
-                "utls": {
-                    "enabled": true,
-                    "fingerprint": "chrome"
-                }
-            },
-            "transport": {
-                "type": "ws",
-                "path": "${global_vmess_ws_path}",
-                "headers": {
-                    "Host": ["$argo"]
-                }
-            }
-        },{
-            "tag": "out-ss",
-            "type": "shadowsocks",
-            "server": "$ip",
-            "server_port": ${global_shadowsocks_port},
-            "method": "${global_shadowsocks_method}",
-            "password": "${global_shadowsocks_password}",
-            "multiplex": {}
-        },{
-            "tag": "out-anytls",
-            "type": "anytls",
-            "server": "${ip}",
-            "server_port": ${global_anytls_port},
-            "password": "${global_anytls_password}",
-            "idle_session_check_interval": "30s",
-            "idle_session_timeout": "30s",
-            "min_idle_session": 5,
-            "tls": {
-                "enabled": true,
-                "server_name": "${global_anytls_tls_sni}",
-                "utls": {
-                    "enabled": true,
-                    "fingerprint": "chrome"
-                },
-                "reality": {
-                    "enabled": true,
-                    "public_key": "${global_anytls_tls_public_key}",
-                    "short_id": "${global_anytls_tls_random}"
-                }
-            }
-        },{
             "tag": "直连",
             "type": "direct"
         },{
@@ -1302,13 +1296,13 @@ sing_box_config_show_box() {
             "tag": "节点选择",
             "type": "selector",
             "interrupt_exist_connections": true,
-            "outbounds": ["智能节点", "out-vmess-ws", "out-hysteria2", "out-reality", "out-hysteria2-iplc", "out-reality-iplc", "专线选择", "拒绝"],
+            "outbounds": ["智能节点", "out-vmws", "out-xtls", "out-hy2", "out-xtls-iplc", "out-hy2-iplc", "out-ss-iplc", "专线选择", "拒绝"],
             "default": "智能节点"
         },{
             "tag": "智能节点",
             "type": "urltest",
             "interrupt_exist_connections": true,
-            "outbounds": ["out-vmess-ws", "out-hysteria2", "out-reality", "out-reality-iplc"]
+            "outbounds": ["out-vmws", "out-xtls", "out-hy2", "out-xtls-iplc", "out-hy2-iplc", "out-ss-iplc"]
         },{
             "tag": "专线选择",
             "type": "selector",
@@ -1324,152 +1318,152 @@ sing_box_config_show_box() {
             "tag": "HttpSocks5-p01",
             "type": "selector",
             "interrupt_exist_connections": true,
-            "outbounds": ["节点选择", "out-vmess-ws", "out-hysteria2", "out-reality", "拒绝"],
+            "outbounds": ["节点选择", "拒绝"],
             "default": "节点选择"
         },{
             "tag": "HttpSocks5-p02",
             "type": "selector",
             "interrupt_exist_connections": true,
-            "outbounds": ["节点选择", "out-vmess-ws", "out-hysteria2", "out-reality", "拒绝"],
+            "outbounds": ["节点选择", "拒绝"],
             "default": "节点选择"
         },{
             "tag": "WiFi-202",
             "type": "selector",
             "interrupt_exist_connections": true,
-            "outbounds": ["节点选择", "out-vmess-ws", "out-hysteria2", "out-reality", "拒绝"],
+            "outbounds": ["节点选择", "拒绝"],
             "default": "节点选择"
         },{
             "tag": "WiFi-203",
             "type": "selector",
             "interrupt_exist_connections": true,
-            "outbounds": ["节点选择", "out-vmess-ws", "out-hysteria2", "out-reality", "拒绝"],
+            "outbounds": ["节点选择", "拒绝"],
             "default": "节点选择"
         },{
             "tag": "全局流量（全局模式可用）",
             "type": "selector",
             "interrupt_exist_connections": true,
-            "outbounds": ["节点选择", "out-vmess-ws", "out-hysteria2", "out-reality", "直连", "拒绝"],
+            "outbounds": ["节点选择", "直连", "拒绝"],
             "default": "节点选择"
         },{
             "tag": "IP地理位置",
             "type": "selector",
             "interrupt_exist_connections": true,
-            "outbounds": ["节点选择", "out-vmess-ws", "out-hysteria2", "out-reality", "直连", "拒绝"],
+            "outbounds": ["节点选择", "直连", "拒绝"],
             "default": "节点选择"
         },{
             "tag": "Web监控",
             "type": "selector",
             "interrupt_exist_connections": true,
-            "outbounds": ["节点选择", "out-vmess-ws", "out-hysteria2", "out-reality", "直连", "拒绝"],
+            "outbounds": ["节点选择", "直连", "拒绝"],
             "default": "拒绝"
         },{
             "tag": "Google",
             "type": "selector",
             "interrupt_exist_connections": true,
-            "outbounds": ["节点选择", "out-vmess-ws", "out-hysteria2", "out-reality", "直连", "拒绝"],
+            "outbounds": ["节点选择", "直连", "拒绝"],
             "default": "节点选择"
         },{
             "tag": "Microsoft",
             "type": "selector",
             "interrupt_exist_connections": true,
-            "outbounds": ["节点选择", "out-vmess-ws", "out-hysteria2", "out-reality", "直连", "拒绝"],
+            "outbounds": ["节点选择", "直连", "拒绝"],
             "default": "节点选择"
         },{
             "tag": "Apple",
             "type": "selector",
             "interrupt_exist_connections": true,
-            "outbounds": ["节点选择", "out-vmess-ws", "out-hysteria2", "out-reality", "直连", "拒绝"],
+            "outbounds": ["节点选择", "直连", "拒绝"],
             "default": "节点选择"
         },{
             "tag": "Telegram",
             "type": "selector",
             "interrupt_exist_connections": true,
-            "outbounds": ["节点选择", "out-vmess-ws", "out-hysteria2", "out-reality", "直连", "拒绝"],
+            "outbounds": ["节点选择", "直连", "拒绝"],
             "default": "节点选择"
         },{
             "tag": "AI",
             "type": "selector",
             "interrupt_exist_connections": true,
-            "outbounds": ["节点选择", "out-vmess-ws", "out-hysteria2", "out-reality", "直连", "拒绝"],
+            "outbounds": ["节点选择", "直连", "拒绝"],
             "default": "节点选择"
         },{
             "tag": "BitCoin",
             "type": "selector",
             "interrupt_exist_connections": true,
-            "outbounds": ["节点选择", "out-vmess-ws", "out-hysteria2", "out-reality", "直连", "拒绝"],
+            "outbounds": ["节点选择", "直连", "拒绝"],
             "default": "节点选择"
         },{
             "tag": "Meta",
             "type": "selector",
             "interrupt_exist_connections": true,
-            "outbounds": ["节点选择", "out-vmess-ws", "out-hysteria2", "out-reality", "直连", "拒绝"],
+            "outbounds": ["节点选择", "直连", "拒绝"],
             "default": "节点选择"
         },{
             "tag": "Twitter",
             "type": "selector",
             "interrupt_exist_connections": true,
-            "outbounds": ["节点选择", "out-vmess-ws", "out-hysteria2", "out-reality", "直连", "拒绝"],
+            "outbounds": ["节点选择", "直连", "拒绝"],
             "default": "节点选择"
         },{
             "tag": "Netflix",
             "type": "selector",
             "interrupt_exist_connections": true,
-            "outbounds": ["节点选择", "out-vmess-ws", "out-hysteria2", "out-reality", "直连", "拒绝"],
+            "outbounds": ["节点选择", "直连", "拒绝"],
             "default": "节点选择"
         },{
             "tag": "Spotify",
             "type": "selector",
             "interrupt_exist_connections": true,
-            "outbounds": ["节点选择", "out-vmess-ws", "out-hysteria2", "out-reality", "直连", "拒绝"],
+            "outbounds": ["节点选择", "直连", "拒绝"],
             "default": "节点选择"
         },{
             "tag": "Amazon",
             "type": "selector",
             "interrupt_exist_connections": true,
-            "outbounds": ["节点选择", "out-vmess-ws", "out-hysteria2", "out-reality", "直连", "拒绝"],
+            "outbounds": ["节点选择", "直连", "拒绝"],
             "default": "节点选择"
         },{
             "tag": "Tiktok",
             "type": "selector",
             "interrupt_exist_connections": true,
-            "outbounds": ["节点选择", "out-vmess-ws", "out-hysteria2", "out-reality", "直连", "拒绝"],
+            "outbounds": ["节点选择", "直连", "拒绝"],
             "default": "拒绝"
         },{
             "tag": "Cloudflare",
             "type": "selector",
             "interrupt_exist_connections": true,
-            "outbounds": ["节点选择", "out-vmess-ws", "out-hysteria2", "out-reality", "直连", "拒绝"],
+            "outbounds": ["节点选择", "直连", "拒绝"],
             "default": "节点选择"
         },{
             "tag": "海外大众流量",
             "type": "selector",
             "interrupt_exist_connections": true,
-            "outbounds": ["节点选择", "out-vmess-ws", "out-hysteria2", "out-reality", "直连", "拒绝"],
+            "outbounds": ["节点选择", "直连", "拒绝"],
             "default": "节点选择"
         },{
             "tag": "海外非大众流量",
             "type": "selector",
             "interrupt_exist_connections": true,
-            "outbounds": ["节点选择", "out-vmess-ws", "out-hysteria2", "out-reality", "直连", "拒绝"],
+            "outbounds": ["节点选择", "直连", "拒绝"],
             "default": "节点选择"
         },{
             "tag": "国内域名流量",
             "type": "selector",
             "interrupt_exist_connections": true,
-            "outbounds": ["节点选择", "out-vmess-ws", "out-hysteria2", "out-reality", "直连", "拒绝"],
+            "outbounds": ["节点选择", "直连", "拒绝"],
             "default": "直连"
         },{
             "tag": "国内IP流量",
             "type": "selector",
             "interrupt_exist_connections": true,
-            "outbounds": ["节点选择", "out-vmess-ws", "out-hysteria2", "out-reality", "直连", "拒绝"],
+            "outbounds": ["节点选择", "直连", "拒绝"],
             "default": "拒绝"
 
         },{
             "tag": "漏网之鱼",
             "type": "selector",
             "interrupt_exist_connections": true,
-            "outbounds": ["节点选择", "out-vmess-ws", "out-hysteria2", "out-reality", "直连", "拒绝"],
+            "outbounds": ["节点选择", "直连", "拒绝"],
             "default": "拒绝"
         }
     ],
