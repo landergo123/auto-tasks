@@ -635,7 +635,7 @@ EOF
 {
     "log": {
         "disabled": false,
-        "level": "fatal",
+        "level": "error",
         "output": "${global_box_log_file}",
         "timestamp": true
     },
@@ -1072,7 +1072,7 @@ sing_box_config_show_box() {
 {
     "log": {
         "disabled": false,
-        "level": "fatal",
+        "level": "error",
         "timestamp": true
     },
     "experimental": {
