@@ -1104,8 +1104,8 @@ sing_box_config_show_box() {
             "strict_route": true,
             "auto_redirect": false,
             "stack": "system",
-            "mtu": 1420,
-            "address": ["172.19.0.1/30"]
+            "mtu": 1400,
+            "address": ["172.19.0.1/30","fdfe:dcba:9876::1/126"]
         },{
             "tag": "in-httpsocks5-cn",
             "type": "mixed",
