@@ -544,6 +544,9 @@ EOF
   fi
 
   if [ "$global_reality_enabled" = "Y" ]; then
+    if [ -n "$inbounds_str" ]; then
+      inbounds_str="${inbounds_str}, "
+    fi
     inbounds_str=$(cat <<EOF
 ${inbounds_str}{
             "tag": "in-reality",
