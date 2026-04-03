@@ -322,16 +322,16 @@ set_os_time_zone "$param_tz"
 set_os_language "$param_lang"
 #set_dns_server
 
-print_message "准备调整时间：---------------------------------------"
-if ! chrony_exists; then
-  chrony_install
-fi
+#print_message "准备调整时间：---------------------------------------"
+#if ! chrony_exists; then
+#  chrony_install
+#fi
 # 强制同步时钟
-if command_exists chronyc; then
-  print_message "NTP服务：强制时钟同步。"
-  chronyc waitsync 30 0.01
-  chronyc makestep
-fi
+#if command_exists chronyc; then
+#  print_message "NTP服务：强制时钟同步。"
+#  chronyc waitsync 30 0.01
+#  chronyc makestep
+#fi
 
 print_message ""
 print_message ""
