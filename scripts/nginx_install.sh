@@ -392,7 +392,7 @@ http {
     #server_names_hash_bucket_size   128;
 
     # log setting[/var/log/nginx/access.log   /dev/null   /dev/stdout]
-    log_format                       alertsyslog '[\$time_iso8601][\$remote_addr] \$arg_content';
+    log_format                       alertsyslog '[\$time_iso8601] \$arg_content';
     log_format                       access '[\$time_iso8601][\$remote_addr]'
                                         '[status=\$status][\$bytes_sent][\$request_time][\$upstream_response_time][\$http_origin][\$var_cors_origin][\$var_connection_header][\$server_port \$request_method \$scheme://\$host\$request_uri]';
     access_log                       /dev/null access;
