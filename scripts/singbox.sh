@@ -340,7 +340,8 @@ sing_box_install() {
   fi
 
   tar -xzf "${global_box_down_path}/${package_name}.tar.gz" -C "${global_box_down_path}"
-  mv "${global_box_down_path}/${package_name}/sing-box" "${global_box_home_path}"
+  #mv "${global_box_down_path}/${package_name}/sing-box" "${global_box_home_path}"
+  mv "${global_box_down_path}/${package_name}/*" "${global_box_home_path}/"
 
   # Set the permissions
   chown root:root "${global_box_home_path}/sing-box"
