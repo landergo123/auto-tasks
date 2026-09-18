@@ -1,6 +1,7 @@
 #!/bin/sh
 set -e
 
+global_box_exec_name="connmgr"
 global_box_home_path=
 global_box_temp_path=
 global_box_log_path=
@@ -205,7 +206,7 @@ env_init() {
   global_box_temp_path="$global_box_home_path/_temp_"
   global_box_down_path="$global_box_temp_path"
   global_box_log_path="$global_box_home_path/logs"
-  global_box_log_file="$global_box_log_path/sing-box.log"
+  global_box_log_file="$global_box_log_path/${global_box_exec_name}.log"
 
   mkdir -p "$global_box_home_path"
   mkdir -p "$global_box_temp_path"
@@ -238,10 +239,9 @@ package_jq_install(){
 
 sing_box_daemon(){
   # Create sing-box.service
-  cat > /etc/systemd/system/sing-box.service <<EOF
+  cat > /etc/systemd/system/${global_box_exec_name}.service <<EOF
 [Unit]
-Description=sing-box service
-Documentation=https://sing-box.sagernet.org
+Description=${global_box_exec_name} service
 After=network.target nss-lookup.target network-online.target
 
 [Service]
@@ -252,7 +252,7 @@ CapabilityBoundingSet=CAP_NET_ADMIN CAP_NET_BIND_SERVICE CAP_NET_RAW
 AmbientCapabilities=CAP_NET_ADMIN CAP_NET_BIND_SERVICE CAP_NET_RAW
 #CapabilityBoundingSet=CAP_NET_ADMIN CAP_NET_BIND_SERVICE CAP_SYS_PTRACE CAP_DAC_READ_SEARCH
 #AmbientCapabilities=CAP_NET_ADMIN CAP_NET_BIND_SERVICE CAP_SYS_PTRACE CAP_DAC_READ_SEARCH
-ExecStart=${global_box_home_path}/sing-box run -c ${global_box_home_path}/config.json
+ExecStart=${global_box_home_path}/${global_box_exec_name} run -c ${global_box_home_path}/config.json
 ExecReload=/bin/kill -HUP \$MAINPID
 Restart=on-failure
 RestartSec=10s
@@ -261,23 +261,23 @@ LimitNOFILE=infinity
 [Install]
 WantedBy=multi-user.target
 EOF
-  sudo systemctl enable sing-box || true
+  sudo systemctl enable ${global_box_exec_name} || true
   sudo systemctl daemon-reload || true
 }
 
 find_sing_box_hone_path(){
-  if [ ! -f "/etc/systemd/system/sing-box.service" ]; then
+  if [ ! -f "/etc/systemd/system/${global_box_exec_name}.service" ]; then
     echo ""
     return 0
   fi
-  command_path=$(cat /etc/systemd/system/sing-box.service | grep "^ExecStart" | cut -d= -f2 | cut -d' ' -f1)
+  command_path=$(cat /etc/systemd/system/${global_box_exec_name}.service | grep "^ExecStart" | cut -d= -f2 | cut -d' ' -f1)
   if [ -z "$command_path" ]; then
     echo ""
     return 0
   fi
   resolved_path=$(readlink -f "$command_path")
   parent_path=$(dirname "$resolved_path")
-  if [ -f "${parent_path}/sing-box" ]; then
+  if [ -f "${parent_path}/${global_box_exec_name}" ]; then
     echo "$parent_path"
     return 0
   fi
@@ -286,26 +286,26 @@ find_sing_box_hone_path(){
 
 sing_box_uninstall() (
   set -e
-  print_message "准备卸载sing-box ..."
+  print_message "准备卸载${global_box_exec_name} ..."
   # Stop and disable sing-box service
-  print_message "关闭sing-box ..."
-  sudo systemctl stop sing-box || true
-  print_message "关闭开机自启动sing-box ..."
-  sudo systemctl disable sing-box || true
+  print_message "关闭${global_box_exec_name} ..."
+  sudo systemctl stop ${global_box_exec_name} || true
+  print_message "关闭开机自启动${global_box_exec_name} ..."
+  sudo systemctl disable ${global_box_exec_name} || true
   #sudo systemctl stop cloudflared-linux
   #sudo systemctl disable cloudflared-linux
   sudo systemctl daemon-reload || true
 
   print_message "清理垃圾 ..."
-  delete_file /etc/systemd/system/sing-box.service
+  delete_file /etc/systemd/system/${global_box_exec_name}.service
   #delete_file /etc/systemd/system/cloudflared-linux.service
   parent_path="${global_box_home_path}/.."
   parent_path=$(readlink -f "$parent_path")
-  delete_file "${parent_path}/singbox"
-  if [ -f "${global_box_home_path}/sing-box" ]; then
+  delete_file "${parent_path}/${global_box_exec_name}"
+  if [ -f "${global_box_home_path}/${global_box_exec_name}" ]; then
     print_message "卸载已完成"
   else
-    print_message "未找到sing-box程序：请确认指定的安装目录是否正确 ${global_box_home_path} ..."
+    print_message "未找到${global_box_exec_name}程序：请确认指定的安装目录是否正确 ${global_box_home_path} ..."
   fi
 )
 
@@ -341,11 +341,12 @@ sing_box_install() {
 
   tar -xzf "${global_box_down_path}/${package_name}.tar.gz" -C "${global_box_down_path}"
   #mv "${global_box_down_path}/${package_name}/sing-box" "${global_box_home_path}"
-  mv "${global_box_down_path}/${package_name}/*" "${global_box_home_path}/"
+  mv ${global_box_down_path}/${package_name}/* "${global_box_home_path}/"
 
   # Set the permissions
   chown root:root "${global_box_home_path}/sing-box"
   chmod +x "${global_box_home_path}/sing-box"
+  mv "${global_box_home_path}/sing-box" "${global_box_home_path}/${global_box_exec_name}"
 
   # todo
   delete_file "${global_box_down_path}/${package_name}"
@@ -361,19 +362,19 @@ sing_box_install() {
 sing_box_config_init() {
   if [ "$global_reality_enabled" = "Y" ]; then
     print_message "正在生成 Reality协议 配置参数 ..."
-    global_reality_tls_key_pair=$("${global_box_home_path}"/sing-box generate reality-keypair)
+    global_reality_tls_key_pair=$("${global_box_home_path}"/${global_box_exec_name} generate reality-keypair)
     global_reality_tls_private_key=$(echo "$global_reality_tls_key_pair" | awk '/PrivateKey/ {print $2}' | tr -d '"')
     global_reality_tls_public_key=$(echo "$global_reality_tls_key_pair" | awk '/PublicKey/ {print $2}' | tr -d '"')
     echo "$global_reality_tls_private_key" | base64 > "${global_box_home_path}"/reality.private.key.base64
     echo "$global_reality_tls_public_key" | base64 > "${global_box_home_path}"/reality.public.key.base64
-    global_reality_auth_password=$("${global_box_home_path}"/sing-box generate uuid)
-    global_reality_tls_random=$("${global_box_home_path}"/sing-box generate rand --hex 8)
+    global_reality_auth_password=$("${global_box_home_path}"/${global_box_exec_name} generate uuid)
+    global_reality_tls_random=$("${global_box_home_path}"/${global_box_exec_name} generate rand --hex 8)
   fi
 
   if [ "$global_hysteria2_enabled" = "Y" ]; then
     print_message "正在生成 Hysteria2协议 配置参数 ..."
-    global_hysteria2_auth_password=$("${global_box_home_path}"/sing-box generate rand --hex 8)
-    global_hysteria2_obfs_password=$("${global_box_home_path}"/sing-box generate rand --hex 8)
+    global_hysteria2_auth_password=$("${global_box_home_path}"/${global_box_exec_name} generate rand --hex 8)
+    global_hysteria2_obfs_password=$("${global_box_home_path}"/${global_box_exec_name} generate rand --hex 8)
     global_hysteria2_tls_public_key_path="${global_box_home_path}/hysteria2.public.key"
     global_hysteria2_tls_private_key_path="${global_box_home_path}/hysteria2.private.key"
     touch /root/.rnd
@@ -385,23 +386,23 @@ sing_box_config_init() {
 
   if [ "$global_vmess_ws_enabled" = "Y" ]; then
     print_message "正在生成 Vmess协议 配置参数 ..."
-    global_vmess_ws_auth_password=$("${global_box_home_path}"/sing-box generate uuid)
+    global_vmess_ws_auth_password=$("${global_box_home_path}"/${global_box_exec_name} generate uuid)
   fi
 
   if [ "$global_shadowsocks_enabled" = "Y" ]; then
     print_message "正在生成 Shadowsocks协议 配置参数 ..."
-    global_shadowsocks_password=$("${global_box_home_path}"/sing-box generate rand --base64 16)
+    global_shadowsocks_password=$("${global_box_home_path}"/${global_box_exec_name} generate rand --base64 16)
   fi
 
   if [ "$global_anytls_enabled" = "Y" ]; then
     print_message "正在生成 AnyTLS协议 配置参数 ..."
-    global_anytls_tls_key_pair=$("${global_box_home_path}"/sing-box generate reality-keypair)
+    global_anytls_tls_key_pair=$("${global_box_home_path}"/${global_box_exec_name} generate reality-keypair)
     global_anytls_tls_private_key=$(echo "$global_anytls_tls_key_pair" | awk '/PrivateKey/ {print $2}' | tr -d '"')
     global_anytls_tls_public_key=$(echo "$global_anytls_tls_key_pair" | awk '/PublicKey/ {print $2}' | tr -d '"')
     echo "$global_anytls_tls_private_key" | base64 > "${global_box_home_path}"/anytls.private.key.base64
     echo "$global_anytls_tls_public_key" | base64 > "${global_box_home_path}"/anytls.public.key.base64
-    global_anytls_password=$("${global_box_home_path}"/sing-box generate uuid)
-    global_anytls_tls_random=$("${global_box_home_path}"/sing-box generate rand --hex 8)
+    global_anytls_password=$("${global_box_home_path}"/${global_box_exec_name} generate uuid)
+    global_anytls_tls_random=$("${global_box_home_path}"/${global_box_exec_name} generate rand --hex 8)
   fi
 }
 
@@ -2723,12 +2724,12 @@ option_for_install(){
 
   if [ "$global_reality_enabled" = "Y" -o "$global_hysteria2_enabled" = "Y" -o "$global_vmess_ws_enabled" = "Y" -o "$global_shadowsocks_enabled" = "Y" -o "$global_anytls_enabled" = "Y" ]; then
     sing_box_install
-    print_message "sing-box 正在重启 ..."
-    sudo systemctl restart sing-box
+    print_message "${global_box_exec_name} 正在重启 ..."
+    sudo systemctl restart ${global_box_exec_name}
     if [ $? -ne 0 ]; then
-        print_message "sing-box 重启失败"
+        print_message "${global_box_exec_name} 重启失败"
     else
-        print_message "sing-box 重启成功"
+        print_message "${global_box_exec_name} 重启成功"
     fi
 
     print_message "正在配置定时任务：滚动日志 & 周期重启"
@@ -2743,12 +2744,12 @@ option_for_install(){
         touch $TMP_CRON
       fi
 
-      if grep -q "sing-box.log" "$TMP_CRON"; then
+      if grep -q "${global_box_exec_name}.log" "$TMP_CRON"; then
         print_message "定时任务【滚动日志】已存在，无需添加"
       else
-        echo "0 6 * * * cat /dev/null > ${global_box_log_path}/sing-box.log" >> $TMP_CRON
+        echo "0 6 * * * cat /dev/null > ${global_box_log_path}/${global_box_exec_name}.log" >> $TMP_CRON
         CRON_CHANGE="Y"
-        print_message "定时任务【滚动日志】已添加：每天6点执行 cat /dev/null >${global_box_log_path}/sing-box.log"
+        print_message "定时任务【滚动日志】已添加：每天6点执行 cat /dev/null >${global_box_log_path}/${global_box_exec_name}.log"
       fi
 
       if grep -q "reboot" "$TMP_CRON"; then
@@ -2855,7 +2856,7 @@ if [ -n "$install_path" ]; then
     exit_now $global_code_failure
   else
     install_path=$(readlink -f "$install_path")
-    global_box_home_path="${install_path}/singbox"
+    global_box_home_path="${install_path}/${global_box_exec_name}"
   fi
 fi
 
@@ -2898,7 +2899,7 @@ fi
 
 if [ "$option" = "install" ]; then
   if [ "$global_box_home_path" = "" ]; then
-    global_box_home_path="/opt/softs/singbox"
+    global_box_home_path="/opt/softs/${global_box_exec_name}"
   fi
 else
   if [ "$global_box_home_path" = "" ]; then
