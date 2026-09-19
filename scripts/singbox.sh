@@ -1140,7 +1140,7 @@ sing_box_config_show_box() {
             "tls": {
                 "enabled": true,
                 "server_name": "$argo",
-                "insecure": true,
+                "insecure": false,
                 "utls": {
                     "enabled": true,
                     "fingerprint": "chrome"
@@ -1165,6 +1165,7 @@ sing_box_config_show_box() {
             "tls": {
                 "enabled": true,
                 "server_name": "${global_anytls_tls_sni}",
+                "insecure": false,
                 "utls": {
                     "enabled": true,
                     "fingerprint": "chrome"
@@ -1186,6 +1187,7 @@ sing_box_config_show_box() {
             "tls": {
                 "enabled": true,
                 "server_name": "${global_reality_tls_sni}",
+                "insecure": false,
                 "utls": {
                     "enabled": true,
                     "fingerprint": "chrome"
@@ -1229,6 +1231,7 @@ sing_box_config_show_box() {
             "tls": {
                 "enabled": true,
                 "server_name": "${global_anytls_tls_sni}",
+                "insecure": false,
                 "utls": {
                     "enabled": true,
                     "fingerprint": "chrome"
@@ -1251,6 +1254,7 @@ sing_box_config_show_box() {
             "tls": {
                 "enabled": true,
                 "server_name": "${global_reality_tls_sni}",
+                "insecure": false,
                 "utls": {
                     "enabled": true,
                     "fingerprint": "chrome"
